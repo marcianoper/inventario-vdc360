@@ -15,6 +15,7 @@
       --brand2:#0f9a52;
       --shadow:0 20px 50px rgba(0,0,0,.12);
       --r:18px;
+      --danger:#b91c1c;
     }
     *{box-sizing:border-box}
     body{
@@ -139,23 +140,6 @@
     td.kg{ text-align:right; }
     tr:hover td{ background:#f9fafb; }
 
-    /* Tarjeta vacía */
-    .empty{
-      margin-top:60px;
-      height:520px;
-      border-radius:18px;
-      border:1px dashed rgba(0,0,0,.15);
-      background:rgba(255,255,255,.55);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:rgba(17,24,39,.55);
-      font-weight:1000;
-      text-align:center;
-      padding:18px;
-    }
-
-    /* Para que el inventario REAL se vea tipo “pill” */
     .skuPill{
       display:inline-block;
       padding:4px 10px;
@@ -171,6 +155,11 @@
       font-size:12px;
       font-weight:900;
       color:var(--muted);
+      line-height:1.35;
+    }
+    .badNote{
+      color:var(--danger);
+      font-weight:1000;
     }
 
     @media (max-width:640px){
@@ -189,7 +178,7 @@
         <div class="logo">VDC</div>
         <div class="title">
           <b>Dashboard Mostrador — VDC 360°</b>
-          <span>Izquierda: enviados del día · Centro: inventario real (stock_mostrador)</span>
+          <span>Izq: enviados · Centro: stock real · Der: vendidos por producto</span>
         </div>
       </div>
 
@@ -203,8 +192,6 @@
       <span class="pill">📅 Fecha</span>
       <input type="date" id="fecha">
       <span class="pill" id="status">Cargando…</span>
-
-      <!-- estado del stock -->
       <span class="pill ok" id="stockStatus">Stock: conectando…</span>
     </div>
   </div>
@@ -213,38 +200,43 @@
 <div class="wrap">
   <div class="grid">
 
-    <!-- IZQUIERDA: inventario agrupado por enviados (mostrador_enviados) -->
+    <!-- IZQUIERDA -->
     <section class="card">
       <div class="tag">RESUMEN DEL DÍA</div>
       <div class="tableWrap">
         <table>
-          <thead>
-            <tr><th>Producto</th><th class="kg">Kilos</th></tr>
-          </thead>
+          <thead><tr><th>Producto</th><th class="kg">Kilos</th></tr></thead>
           <tbody id="invBody"></tbody>
         </table>
       </div>
       <div class="submuted">*Agrupado por producto con base en lo capturado en “Registro Mostrador”.</div>
     </section>
 
-    <!-- CENTRO: Inventario REAL en vivo desde stock_mostrador (solo KG) -->
+    <!-- CENTRO -->
     <section class="card">
       <div class="tag">INVENTARIO REAL</div>
       <div class="tableWrap">
         <table>
-          <thead>
-            <tr><th>SKU</th><th class="kg">Kg</th></tr>
-          </thead>
+          <thead><tr><th>SKU</th><th class="kg">Kg</th></tr></thead>
           <tbody id="stockBody"></tbody>
         </table>
       </div>
-      <div class="submuted">*Esto se descuenta en tiempo real cuando escanean / venden (según tu otro sistema).</div>
+      <div class="submuted">*Este es el inventario que tu sistema descuenta en tiempo real por ventas.</div>
     </section>
 
-    <!-- DERECHA: vacío -->
+    <!-- DERECHA -->
     <section class="card">
       <div class="tag">TOTAL DE KG VENDIDOS</div>
-      <div class="empty">(Pendiente) Aquí me dices qué vamos a mostrar.</div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Producto</th><th class="kg">Kg vendidos</th></tr></thead>
+          <tbody id="vendidosBody"></tbody>
+        </table>
+      </div>
+      <div class="submuted">
+        *Cálculo: <b>Enviado hoy</b> − <b>Stock actual</b> (por SKU).<br/>
+        <span class="badNote">Si un producto no aparece aquí, falta mapear Producto → SKU.</span>
+      </div>
     </section>
 
   </div>
@@ -258,9 +250,8 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
-  /* ====== Tablas ====== */
-  const T_ENVIADOS = "mostrador_enviados";   // para la izquierda
-  const T_STOCK    = "stock_mostrador";      // para inventario real (centro)
+  const T_ENVIADOS = "mostrador_enviados";
+  const T_STOCK    = "stock_mostrador";
 
   const $ = (s)=>document.querySelector(s);
   function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
@@ -274,7 +265,34 @@
     return local.toISOString().slice(0,10);
   }
 
-  /* ====== IZQUIERDA: Agrupar enviados del día (mostrador_enviados) ====== */
+  /* =========================================================
+     ✅ MAPEO Producto (enviados) -> SKU (stock_mostrador)
+     Edita esto a tu gusto (es la llave para calcular vendidos).
+  ========================================================= */
+  const PRODUCTO_A_SKU = {
+    "Higado": "HIGADO_RES",
+    "Corazon": "CORAZON_RES",
+    "Panza": "PANZA_RES",
+    "Tripa": "TRIPA_RES",
+    "Libro": "LIBRO_RES",
+    "Bofe": "BOFE_RES",
+    "Pata Blanca": "PATA_BLANCA",
+    "Pata Morena": "PATA_MORENA",
+    "Cabeza de res": "CABEZA_RES",
+
+    // cajas / menudos (ejemplos, ajústalos a tus SKUs reales):
+    "Caja Washington": "CAJA_WASHINGTON",
+    "Menudo Canadian": "MENUDO_CANADIAN",
+    "Caja Menudo National": "CAJA_MENUDO_NATIONAL"
+  };
+
+  /* ====== ESTADOS EN MEMORIA ====== */
+  let enviadosRows = [];     // del día (mostrador_enviados)
+  let stockRows = [];        // stock_mostrador (global)
+  let enviadosChannel = null;
+  let stockChannel = null;
+
+  /* ====== IZQUIERDA: Enviados agrupado ====== */
   function buildInventario(enviados){
     const map = new Map();
     for(const r of enviados){
@@ -314,15 +332,10 @@
     }));
   }
 
-  /* ====== CENTRO: Inventario REAL (stock_mostrador) en vivo ====== */
-  let stockRows = [];
-
+  /* ====== CENTRO: Stock real ====== */
   function renderStock(){
     const body = $('#stockBody');
-
-    // ordenado por SKU
     const sorted = [...stockRows].sort((a,b)=>String(a.sku||'').localeCompare(String(b.sku||''), 'es', {sensitivity:'base'}));
-
     body.innerHTML = sorted.map(r=>`
       <tr>
         <td><span class="skuPill">${esc(r.sku||'')}</span></td>
@@ -351,7 +364,6 @@
     renderStock();
   }
 
-  let stockChannel = null;
   async function realtimeStock(){
     const st = $('#stockStatus');
 
@@ -374,6 +386,7 @@
 
           st.textContent = "Stock: realtime ✓";
           renderStock();
+          renderVendidos(); // ✅ recalcula vendidos en vivo
         }
       )
       .subscribe((s)=>{
@@ -382,9 +395,59 @@
       });
   }
 
-  /* ====== Realtime enviados del día (izquierda) ====== */
-  let enviadosChannel = null;
-  async function conectarRealtimeEnviados(fecha, onRefresh){
+  /* =========================================================
+     ✅ DERECHA: Kg vendidos por producto (Enviado - Stock)
+  ========================================================= */
+  function buildVendidos(enviados, stock){
+    // 1) sum enviado hoy por PRODUCTO
+    const enviadoPorProducto = new Map();
+    for(const r of enviados){
+      const p = String(r.producto||'').trim();
+      if(!p) continue;
+      enviadoPorProducto.set(p, (enviadoPorProducto.get(p)||0) + num(r.kilos));
+    }
+
+    // 2) index stock por SKU
+    const stockPorSku = new Map();
+    for(const s of stock){
+      const sku = String(s.sku||'').trim();
+      if(!sku) continue;
+      stockPorSku.set(sku, num(s.kg));
+    }
+
+    // 3) calcula vendidos por producto usando el mapeo
+    const out = [];
+    for(const [producto, kgEnviado] of enviadoPorProducto.entries()){
+      const sku = PRODUCTO_A_SKU[producto];
+      if(!sku) continue; // si no hay mapa, no podemos calcular
+
+      const kgStock = stockPorSku.get(sku) ?? 0;
+      const vendidos = Math.max(0, kgEnviado - kgStock);
+
+      out.push({ producto, vendidos });
+    }
+
+    // orden desc
+    out.sort((a,b)=>b.vendidos - a.vendidos);
+    return out;
+  }
+
+  function renderVendidos(){
+    const body = $('#vendidosBody');
+    const rows = buildVendidos(enviadosRows, stockRows);
+
+    body.innerHTML = rows.map(r=>`
+      <tr>
+        <td>${esc(r.producto)}</td>
+        <td class="kg">${fmt2(r.vendidos)}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">
+      Sin datos (o falta mapear Producto → SKU)
+    </td></tr>`;
+  }
+
+  /* ====== Realtime enviados del día ====== */
+  async function conectarRealtimeEnviados(fecha){
     if(enviadosChannel){
       try{ await sb.removeChannel(enviadosChannel); }catch(e){}
       enviadosChannel = null;
@@ -392,7 +455,7 @@
     enviadosChannel = sb.channel(`dash-enviados-${fecha}`)
       .on('postgres_changes',
         { event:'*', schema:'public', table:T_ENVIADOS, filter:`fecha=eq.${fecha}` },
-        async ()=>{ onRefresh && onRefresh(); }
+        async ()=>{ await refreshEnviados(); }
       )
       .subscribe((s)=>{
         const pill = $('#rt');
@@ -403,9 +466,9 @@
 
   async function refreshEnviados(){
     const fecha = $('#fecha').value;
-    const enviados = await cargarEnviadosDia(fecha);
-    const inv = buildInventario(enviados);
-    renderInventario(inv);
+    enviadosRows = await cargarEnviadosDia(fecha);
+    renderInventario(buildInventario(enviadosRows));
+    renderVendidos(); // ✅ recalcula vendidos cuando cambian los enviados
   }
 
   /* ====== ARRANQUE ====== */
@@ -413,17 +476,19 @@
 
   $('#fecha').addEventListener('change', async ()=>{
     await refreshEnviados();
-    await conectarRealtimeEnviados($('#fecha').value, refreshEnviados);
+    await conectarRealtimeEnviados($('#fecha').value);
+    // vendidos se recalcula dentro de refreshEnviados()
   });
 
   (async ()=>{
-    // izquierda
     await refreshEnviados();
-    await conectarRealtimeEnviados($('#fecha').value, refreshEnviados);
+    await conectarRealtimeEnviados($('#fecha').value);
 
-    // centro (stock real)
     await loadStock();
     await realtimeStock();
+
+    // primer render vendidos con todo cargado
+    renderVendidos();
   })();
 </script>
 
