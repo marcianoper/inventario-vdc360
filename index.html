@@ -13,50 +13,180 @@
       --muted:#64748b;
       --brand:#0a7a3b;
       --brand2:#0f9a52;
-      --shadow:0 20px 50px rgba(0,0,0,.12);
+      --shadow:0 22px 60px rgba(0,0,0,.14);
+      --line:rgba(15,23,42,.10);
       --danger:#b91c1c;
+      --r:22px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
-    .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 40px}
-    header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);background:rgba(233,220,199,.72);border-bottom:1px solid rgba(0,0,0,.08)}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:12px}
-    .logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 10px 20px rgba(10,122,59,.20);display:grid;place-items:center;color:#fff;font-weight:1000;letter-spacing:.5px;user-select:none}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:
+        radial-gradient(1200px 520px at 14% -10%, rgba(10,122,59,.14), transparent 55%),
+        radial-gradient(1000px 480px at 98% 8%, rgba(15,154,82,.10), transparent 55%),
+        var(--bg);
+      color:var(--ink);
+    }
+    .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 34px}
+
+    /* ===== Header ===== */
+    header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter:saturate(140%) blur(10px);
+      background:rgba(233,220,199,.78);
+      border-bottom:1px solid rgba(0,0,0,.10);
+    }
+    .top{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:12px 0; flex-wrap:wrap;
+    }
+    .brandRow{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
+      box-shadow:0 10px 20px rgba(10,122,59,.22);
+      display:grid; place-items:center;
+      color:#fff; font-weight:1000; letter-spacing:.5px;
+      user-select:none;
+    }
     .title b{display:block;font-size:14px;font-weight:1000}
     .title span{display:block;margin-top:4px;font-size:12px;color:var(--muted);font-weight:900}
-    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;font-weight:1000;font-size:12px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.75);box-shadow:0 8px 18px rgba(2,6,23,.06)}
-    .pill.ok{color:var(--brand);background:rgba(10,122,59,.10);border-color:rgba(10,122,59,.18)}
-    .pill.bad{color:var(--danger);background:#fff1f2;border-color:#fecdd3}
-    .btnLink{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;text-decoration:none;font-weight:1000;border:1px solid rgba(0,0,0,.08);background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);color:#111827}
+    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
 
-    .rowTop{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
-    input[type="date"]{padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,.10);font-weight:900;background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);outline:none}
+    .btnLink{
+      display:inline-flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:14px;text-decoration:none;
+      font-weight:1000;border:1px solid rgba(0,0,0,.10);
+      background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);
+      color:#111827;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      font-weight:1000; font-size:12px;
+      border:1px solid rgba(0,0,0,.10);
+      background:rgba(255,255,255,.72);
+      box-shadow:0 8px 18px rgba(2,6,23,.06);
+      user-select:none;
+    }
+    .pill.ok{ color:var(--brand); background:rgba(10,122,59,.10); border-color:rgba(10,122,59,.18); }
+    .pill.bad{ color:var(--danger); background:#fff1f2; border-color:#fecdd3; }
 
-    .grid{display:grid;grid-template-columns:1.4fr 1fr 0.75fr;gap:18px;margin-top:18px;align-items:start}
-    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .rowTop{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      padding:0 0 14px;
+    }
+    input[type="date"]{
+      padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,.12);
+      font-weight:900;background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);
+      outline:none;
+    }
 
-    .card{background:var(--card);border-radius:22px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.06);padding:16px;position:relative;overflow:visible}
-    .tag{position:absolute;top:14px;left:14px;background:#0b0f17;color:#fff;font-weight:1000;font-size:12px;padding:8px 12px;border-radius:10px;letter-spacing:.7px}
+    /* ===== Grid 3 columnas ===== */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.5fr 1.1fr .65fr; /* tabla 3 más angosta */
+      gap:16px;
+      align-items:stretch; /* importante para igualar altura */
+      margin-top:16px;
+    }
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+    }
 
-    .tableWrap{margin-top:46px;border-radius:18px;border:1px solid rgba(0,0,0,.08);background:#fff;box-shadow:0 10px 24px rgba(2,6,23,.06);overflow:visible}
-    table{width:100%;border-collapse:collapse;min-width:520px}
-    th,td{padding:11px 12px;border-bottom:1px solid rgba(229,231,235,.9);font-weight:900;font-size:13px;white-space:nowrap}
-    th{background:#111827;color:#fff;text-align:left;letter-spacing:.2px;position:sticky;top:0;z-index:2}
-    td.kg{text-align:right}
-    tr:hover td{background:#f9fafb}
-    .submuted{margin-top:8px;font-size:12px;font-weight:900;color:var(--muted);line-height:1.35}
-    .badNote{color:var(--danger);font-weight:1000}
-    @media (max-width:640px){table{min-width:0}th,td{font-size:12.5px}}
+    /* ===== Cards ===== */
+    .card{
+      background:var(--card);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(0,0,0,.06);
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      min-height:520px; /* para que se sienta dashboard */
+    }
 
-    /* ====== TABLA 3 compacta (solo números) ====== */
-    .tableWrap.slim table{ min-width: 0; }
-    .tableWrap.slim th, .tableWrap.slim td{ text-align:right; }
-    .tableWrap.slim th{ text-align:right; }
-    .numCell{
-      font-variant-numeric: tabular-nums;
+    .head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .head h2{
+      margin:0;
+      font-size:12px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      font-weight:1000;
+      color:#111827;
+    }
+    .head p{
+      margin:8px 0 0;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:900;
+      line-height:1.35;
+    }
+
+    /* ===== Tables ===== */
+    .tableWrap{
+      flex:1;
+      border:1px solid rgba(0,0,0,.10);
+      border-radius:18px;
+      overflow:hidden; /* no scroll lateral */
+      background:#fff;
+      box-shadow:0 10px 24px rgba(2,6,23,.06);
+    }
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      background:#111827;color:#fff;
+      padding:10px 10px;
+      font-size:12px;
+      font-weight:1000;
+      letter-spacing:.02em;
+      text-align:left;
+      white-space:nowrap;
+    }
+    tbody td{
+      padding:10px 10px;
+      border-bottom:1px solid rgba(229,231,235,.9);
+      font-size:13px;
+      font-weight:900;
+      vertical-align:middle;
+    }
+    tbody tr:hover td{ background:#f9fafb; }
+    .kg{ text-align:right; font-variant-numeric: tabular-nums; }
+    .producto{
+      max-width: 1px; /* fuerza el ellipsis en tablas angostas */
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    /* Tabla 3 (solo números) */
+    .onlyNums thead th{ text-align:right; }
+    .onlyNums tbody td{
+      text-align:right;
+      font-size:15px;
+      font-weight:1000;
       letter-spacing:.2px;
+    }
+
+    .footerHint{
+      margin-top:10px;
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted);
+      line-height:1.35;
+    }
+    .badNote{ color:var(--danger); font-weight:1000; }
+
+    /* Mobile polish */
+    @media (max-width:520px){
+      .card{min-height:unset}
+      .onlyNums tbody td{font-size:16px}
     }
   </style>
 </head>
@@ -66,11 +196,11 @@
 <header>
   <div class="wrap">
     <div class="top">
-      <div class="brand">
+      <div class="brandRow">
         <div class="logo">VDC</div>
         <div class="title">
           <b>Dashboard Mostrador — VDC 360°</b>
-          <span>1) Enviados · 2) Inventario real · 3) Kg vendidos (lista)</span>
+          <span>Enviados · Inventario real · Vendidos (lista de kg)</span>
         </div>
       </div>
       <div class="actions">
@@ -94,43 +224,71 @@
 
     <!-- 1) Enviados -->
     <section class="card">
-      <div class="tag">RESUMEN DEL DÍA (ENVIADOS)</div>
+      <div class="head">
+        <div>
+          <h2>Resumen del día (Enviados)</h2>
+          <p>Lo que se ha mandado a mostrador hoy (solo sube).</p>
+        </div>
+      </div>
+
       <div class="tableWrap">
         <table>
-          <thead><tr><th>Producto</th><th class="kg">Kg</th></tr></thead>
+          <thead>
+            <tr>
+              <th style="width:72%">Producto</th>
+              <th class="kg" style="width:28%">Kg</th>
+            </tr>
+          </thead>
           <tbody id="enviadosBody"></tbody>
         </table>
       </div>
-      <div class="submuted">*Este total solo sube durante el día.</div>
+
+      <div class="footerHint">Tip: ordenado por kg (más movido arriba).</div>
     </section>
 
     <!-- 2) Inventario real -->
     <section class="card">
-      <div class="tag">INVENTARIO REAL</div>
+      <div class="head">
+        <div>
+          <h2>Inventario real</h2>
+          <p>Stock en tiempo real en mostrador (sale de <b>stock_mostrador</b>).</p>
+        </div>
+      </div>
+
       <div class="tableWrap">
         <table>
-          <thead><tr><th>Producto</th><th class="kg">Kg</th></tr></thead>
+          <thead>
+            <tr>
+              <th style="width:72%">Producto</th>
+              <th class="kg" style="width:28%">Kg</th>
+            </tr>
+          </thead>
           <tbody id="realBody"></tbody>
         </table>
       </div>
-      <div class="submuted">
-        *Sale de <b>stock_mostrador</b> en tiempo real, convertido a <b>Producto</b> usando mapa SKU→Producto.
+
+      <div class="footerHint">
+        Convertimos SKU→Producto con mapa. <span class="badNote">Si falta un SKU, no se refleja bien.</span>
       </div>
     </section>
 
-    <!-- 3) Vendidos (solo números, 1 por producto, orden igual a tabla 1) -->
+    <!-- 3) Vendidos (solo números) -->
     <section class="card">
-      <div class="tag">KG VENDIDOS</div>
-      <div class="tableWrap slim">
+      <div class="head">
+        <div>
+          <h2>Kg vendidos</h2>
+          <p>Solo números: 1 por producto, en el mismo orden de “Enviados”.</p>
+        </div>
+      </div>
+
+      <div class="tableWrap onlyNums">
         <table>
           <thead><tr><th>Kg</th></tr></thead>
           <tbody id="vendidosOnlyBody"></tbody>
         </table>
       </div>
-      <div class="submuted">
-        *Cada fila corresponde a la misma fila de la tabla 1 (enviados).<br>
-        <span class="badNote">Si un SKU no está mapeado, ese producto puede salir como 0.</span>
-      </div>
+
+      <div class="footerHint">Cada fila corresponde a la misma fila de la tabla 1.</div>
     </section>
 
   </div>
@@ -155,7 +313,7 @@
     return local.toISOString().slice(0,10);
   }
 
-  // ✅ MAPA SKU -> Producto
+  // ✅ MAPA SKU -> Producto (ajústalo con tus SKUs reales)
   const SKU_A_PRODUCTO = {
     "CAJA_WASHINGTON": "Caja Washington",
     "MENUDO_CANADIAN": "Menudo Canadian",
@@ -182,8 +340,9 @@
       if(!p) continue;
       m.set(p, (m.get(p)||0) + num(r.kilos));
     }
+    // orden por kg (más grande arriba)
     return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
-      .sort((a,b)=>b.kilos-a.kilos); // orden manda más primero
+      .sort((a,b)=>b.kilos-a.kilos);
   }
 
   function groupRealFromStock(stock){
@@ -195,15 +354,29 @@
       if(!producto) continue;
       m.set(producto, (m.get(producto)||0) + num(s.kg));
     }
-    return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
-      .sort((a,b)=>b.kilos-a.kilos);
+    // no importa el orden aquí, porque tabla 3 se alinea a tabla 1
+    return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}));
   }
 
-  function renderTabla(tbodyId, rows){
-    const tb = document.getElementById(tbodyId);
+  function renderTablaEnviados(rows){
+    const tb = document.getElementById("enviadosBody");
     tb.innerHTML = rows.map(r=>`
       <tr>
-        <td>${esc(r.producto)}</td>
+        <td class="producto" title="${esc(r.producto)}">${esc(r.producto)}</td>
+        <td class="kg">${fmt2(r.kilos)}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
+  }
+
+  function renderTablaReal(rows, orderByEnviados){
+    // para que visualmente siga el mismo orden que tabla 1
+    const map = new Map(rows.map(x=>[x.producto, num(x.kilos)]));
+    const ordered = orderByEnviados.map(e=>({producto:e.producto, kilos: map.get(e.producto) ?? 0}));
+
+    const tb = document.getElementById("realBody");
+    tb.innerHTML = ordered.map(r=>`
+      <tr>
+        <td class="producto" title="${esc(r.producto)}">${esc(r.producto)}</td>
         <td class="kg">${fmt2(r.kilos)}</td>
       </tr>
     `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
@@ -211,26 +384,23 @@
 
   function renderVendidosSoloNumeros(enviadosAgg, realAgg){
     const realMap = new Map(realAgg.map(x=>[x.producto, num(x.kilos)]));
-
-    // misma cantidad de filas y mismo orden que enviadosAgg
     const out = enviadosAgg.map(e=>{
       const real = realMap.get(e.producto) ?? 0;
       return Math.max(0, num(e.kilos) - real);
     });
 
     const tb = document.getElementById("vendidosOnlyBody");
-    tb.innerHTML = out.map(v=>`
-      <tr><td class="numCell">${fmt2(v)}</td></tr>
-    `).join('') || `<tr><td style="color:#64748b;font-weight:900">0.00</td></tr>`;
+    tb.innerHTML = out.map(v=>`<tr><td>${fmt2(v)}</td></tr>`).join('')
+      || `<tr><td style="color:#64748b;font-weight:900">0.00</td></tr>`;
   }
 
   function recalcRender(){
     const enviadosAgg = groupEnviados(enviadosRows);
-    const realAgg = groupRealFromStock(stockRows);
+    const realAggRaw  = groupRealFromStock(stockRows);
 
-    renderTabla("enviadosBody", enviadosAgg);
-    renderTabla("realBody", realAgg);
-    renderVendidosSoloNumeros(enviadosAgg, realAgg);
+    renderTablaEnviados(enviadosAgg);
+    renderTablaReal(realAggRaw, enviadosAgg);          // 👈 alineada al orden de tabla 1
+    renderVendidosSoloNumeros(enviadosAgg, realAggRaw);
 
     const notMapped = stockRows.filter(s => s.sku && !SKU_A_PRODUCTO[String(s.sku).trim()]).length;
     const vs = document.getElementById("vendidosStatus");
