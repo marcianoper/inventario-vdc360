@@ -14,158 +14,41 @@
       --brand:#0a7a3b;
       --brand2:#0f9a52;
       --shadow:0 20px 50px rgba(0,0,0,.12);
-      --r:18px;
       --danger:#b91c1c;
     }
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: var(--bg);
-      color: var(--ink);
-    }
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
     .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 40px}
-    header{
-      position:sticky; top:0; z-index:50;
-      backdrop-filter:saturate(140%) blur(10px);
-      background:rgba(233,220,199,.72);
-      border-bottom:1px solid rgba(0,0,0,.08);
-    }
-    .top{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:12px 0; flex-wrap:wrap;
-    }
-    .brand{display:flex; align-items:center; gap:12px}
-    .logo{
-      width:44px;height:44px;border-radius:14px;
-      background:linear-gradient(135deg,var(--brand),var(--brand2));
-      box-shadow:0 10px 20px rgba(10,122,59,.20);
-      display:grid;place-items:center;
-      color:#fff;font-weight:1000;letter-spacing:.5px;
-      user-select:none;
-    }
+    header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);background:rgba(233,220,199,.72);border-bottom:1px solid rgba(0,0,0,.08)}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 10px 20px rgba(10,122,59,.20);display:grid;place-items:center;color:#fff;font-weight:1000;letter-spacing:.5px;user-select:none}
     .title b{display:block;font-size:14px;font-weight:1000}
     .title span{display:block;margin-top:4px;font-size:12px;color:var(--muted);font-weight:900}
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;font-weight:1000;font-size:12px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.75);box-shadow:0 8px 18px rgba(2,6,23,.06)}
+    .pill.ok{color:var(--brand);background:rgba(10,122,59,.10);border-color:rgba(10,122,59,.18)}
+    .pill.bad{color:var(--danger);background:#fff1f2;border-color:#fecdd3}
+    .btnLink{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;text-decoration:none;font-weight:1000;border:1px solid rgba(0,0,0,.08);background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);color:#111827}
 
-    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 10px;border-radius:999px;
-      font-weight:1000;font-size:12px;
-      border:1px solid rgba(0,0,0,.08);
-      background:rgba(255,255,255,.75);
-      box-shadow:0 8px 18px rgba(2,6,23,.06);
-    }
-    .pill.ok{ color:var(--brand); background:rgba(10,122,59,.10); border-color: rgba(10,122,59,.18); }
-    .btnLink{
-      display:inline-flex;align-items:center;gap:10px;
-      padding:10px 12px;border-radius:14px;
-      text-decoration:none;font-weight:1000;
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff;
-      box-shadow:0 8px 18px rgba(2,6,23,.06);
-      color:#111827;
-    }
+    .rowTop{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+    input[type="date"]{padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,.10);font-weight:900;background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);outline:none}
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1.4fr 1fr 1fr;
-      gap:18px;
-      margin-top:18px;
-      align-items:start;
-    }
-    @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
+    .grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:18px;margin-top:18px;align-items:start}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
 
-    .card{
-      background:var(--card);
-      border-radius:22px;
-      box-shadow:var(--shadow);
-      border:1px solid rgba(0,0,0,.06);
-      padding:16px;
-      position:relative;
-      overflow:visible;
-      min-height:unset;
-    }
-    .card .tag{
-      position:absolute; top:14px; left:14px;
-      background:#0b0f17;
-      color:#fff;
-      font-weight:1000;
-      font-size:12px;
-      padding:8px 12px;
-      border-radius:10px;
-      letter-spacing:.7px;
-    }
+    .card{background:var(--card);border-radius:22px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.06);padding:16px;position:relative;overflow:visible}
+    .tag{position:absolute;top:14px;left:14px;background:#0b0f17;color:#fff;font-weight:1000;font-size:12px;padding:8px 12px;border-radius:10px;letter-spacing:.7px}
 
-    .rowTop{
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      margin-top:14px;
-    }
-    input[type="date"]{
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,.10);
-      font-weight:900;
-      background:#fff;
-      box-shadow:0 8px 18px rgba(2,6,23,.06);
-      outline:none;
-    }
-
-    .tableWrap{
-      margin-top:46px;
-      border-radius:18px;
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff;
-      box-shadow:0 10px 24px rgba(2,6,23,.06);
-      overflow:visible;
-      max-height:none;
-    }
-    table{ width:100%; border-collapse:collapse; min-width:520px; }
-    th, td{
-      padding:11px 12px;
-      border-bottom:1px solid rgba(229,231,235,.9);
-      font-weight:900;
-      font-size:13px;
-      white-space:nowrap;
-    }
-    th{
-      background:#111827;
-      color:#fff;
-      text-align:left;
-      letter-spacing:.2px;
-      position:sticky;
-      top:0;
-      z-index:2;
-    }
-    td.kg{ text-align:right; }
-    tr:hover td{ background:#f9fafb; }
-
-    .skuPill{
-      display:inline-block;
-      padding:4px 10px;
-      border-radius:999px;
-      background:#ecfdf5;
-      color:#065f46;
-      font-weight:1000;
-      font-size:12px;
-      border:1px solid rgba(6,95,70,.18);
-    }
-    .submuted{
-      margin-top:8px;
-      font-size:12px;
-      font-weight:900;
-      color:var(--muted);
-      line-height:1.35;
-    }
-    .badNote{
-      color:var(--danger);
-      font-weight:1000;
-    }
-
-    @media (max-width:640px){
-      table{ min-width:0; }
-      th,td{ font-size:12.5px; }
-    }
+    .tableWrap{margin-top:46px;border-radius:18px;border:1px solid rgba(0,0,0,.08);background:#fff;box-shadow:0 10px 24px rgba(2,6,23,.06);overflow:visible}
+    table{width:100%;border-collapse:collapse;min-width:520px}
+    th,td{padding:11px 12px;border-bottom:1px solid rgba(229,231,235,.9);font-weight:900;font-size:13px;white-space:nowrap}
+    th{background:#111827;color:#fff;text-align:left;letter-spacing:.2px;position:sticky;top:0;z-index:2}
+    td.kg{text-align:right}
+    tr:hover td{background:#f9fafb}
+    .submuted{margin-top:8px;font-size:12px;font-weight:900;color:var(--muted);line-height:1.35}
+    .badNote{color:var(--danger);font-weight:1000}
+    @media (max-width:640px){table{min-width:0}th,td{font-size:12.5px}}
   </style>
 </head>
 
@@ -178,10 +61,9 @@
         <div class="logo">VDC</div>
         <div class="title">
           <b>Dashboard Mostrador — VDC 360°</b>
-          <span>Izq: enviados · Centro: stock real · Der: vendidos por producto</span>
+          <span>1) Enviados · 2) Inventario real · 3) Vendidos (1 − 2)</span>
         </div>
       </div>
-
       <div class="actions">
         <a class="btnLink" href="https://marcianoper.github.io/vdc-central/">← VDC Central</a>
         <span id="rt" class="pill ok">LIVE</span>
@@ -193,6 +75,7 @@
       <input type="date" id="fecha">
       <span class="pill" id="status">Cargando…</span>
       <span class="pill ok" id="stockStatus">Stock: conectando…</span>
+      <span class="pill" id="vendidosStatus">Vendidos: listo</span>
     </div>
   </div>
 </header>
@@ -200,33 +83,35 @@
 <div class="wrap">
   <div class="grid">
 
-    <!-- IZQUIERDA -->
+    <!-- 1) Enviados -->
     <section class="card">
-      <div class="tag">RESUMEN DEL DÍA</div>
+      <div class="tag">RESUMEN DEL DÍA (ENVIADOS)</div>
       <div class="tableWrap">
         <table>
-          <thead><tr><th>Producto</th><th class="kg">Kilos</th></tr></thead>
-          <tbody id="invBody"></tbody>
+          <thead><tr><th>Producto</th><th class="kg">Kg</th></tr></thead>
+          <tbody id="enviadosBody"></tbody>
         </table>
       </div>
-      <div class="submuted">*Agrupado por producto con base en lo capturado en “Registro Mostrador”.</div>
+      <div class="submuted">*Este total solo sube durante el día.</div>
     </section>
 
-    <!-- CENTRO -->
+    <!-- 2) Inventario real (por producto, derivado de stock_mostrador via mapa) -->
     <section class="card">
       <div class="tag">INVENTARIO REAL</div>
       <div class="tableWrap">
         <table>
-          <thead><tr><th>SKU</th><th class="kg">Kg</th></tr></thead>
-          <tbody id="stockBody"></tbody>
+          <thead><tr><th>Producto</th><th class="kg">Kg</th></tr></thead>
+          <tbody id="realBody"></tbody>
         </table>
       </div>
-      <div class="submuted">*Este es el inventario que tu sistema descuenta en tiempo real por ventas.</div>
+      <div class="submuted">
+        *Sale de <b>stock_mostrador</b> en tiempo real, pero convertido a <b>Producto</b> usando mapa SKU→Producto.
+      </div>
     </section>
 
-    <!-- DERECHA -->
+    <!-- 3) Vendidos -->
     <section class="card">
-      <div class="tag">TOTAL DE KG VENDIDOS</div>
+      <div class="tag">KG VENDIDOS (HOY)</div>
       <div class="tableWrap">
         <table>
           <thead><tr><th>Producto</th><th class="kg">Kg vendidos</th></tr></thead>
@@ -234,8 +119,8 @@
         </table>
       </div>
       <div class="submuted">
-        *Cálculo: <b>Enviado hoy</b> − <b>Stock actual</b> (por SKU).<br/>
-        <span class="badNote">Si un producto no aparece aquí, falta mapear Producto → SKU.</span>
+        Fórmula: <b>Vendidos = max(0, Enviados − InventarioReal)</b><br>
+        <span class="badNote">Si un producto no aparece, falta su SKU en el mapa.</span>
       </div>
     </section>
 
@@ -243,9 +128,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-  /* ====== SUPABASE ====== */
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
@@ -266,46 +149,70 @@
   }
 
   /* =========================================================
-     ✅ MAPEO Producto (enviados) -> SKU (stock_mostrador)
-     Edita esto a tu gusto (es la llave para calcular vendidos).
+     ✅ MAPA SKU -> Producto (CLAVE)
+     Aquí es donde haces que tabla 2 y 3 sean por "Producto".
   ========================================================= */
-  const PRODUCTO_A_SKU = {
-    "Higado": "HIGADO_RES",
-    "Corazon": "CORAZON_RES",
-    "Panza": "PANZA_RES",
-    "Tripa": "TRIPA_RES",
-    "Libro": "LIBRO_RES",
-    "Bofe": "BOFE_RES",
-    "Pata Blanca": "PATA_BLANCA",
-    "Pata Morena": "PATA_MORENA",
-    "Cabeza de res": "CABEZA_RES",
-
-    // cajas / menudos (ejemplos, ajústalos a tus SKUs reales):
-    "Caja Washington": "CAJA_WASHINGTON",
-    "Menudo Canadian": "MENUDO_CANADIAN",
-    "Caja Menudo National": "CAJA_MENUDO_NATIONAL"
+  const SKU_A_PRODUCTO = {
+    "CAJA_WASHINGTON": "Caja Washington",
+    "MENUDO_CANADIAN": "Menudo Canadian",
+    "CAJA_MENUDO_NATIONAL": "Caja Menudo National",
+    "PANZA_RES": "Panza",
+    "PATA_MORENA": "Pata Morena",
+    "TRIPA_RES": "Tripa",
+    "PATA_BLANCA": "Pata Blanca",
+    "BOFE_RES": "Bofe",
+    "CABEZA_RES": "Cabeza de res",
+    "LIBRO_RES": "Libro",
+    "HIGADO_RES": "Higado",
+    "CORAZON_RES": "Corazon",
+    "CUAJO_RES": "Cuajo"
   };
 
-  /* ====== ESTADOS EN MEMORIA ====== */
-  let enviadosRows = [];     // del día (mostrador_enviados)
-  let stockRows = [];        // stock_mostrador (global)
-  let enviadosChannel = null;
-  let stockChannel = null;
+  let enviadosRows = [];   // enviados crudos del día
+  let stockRows = [];      // stock crudo por sku
 
-  /* ====== IZQUIERDA: Enviados agrupado ====== */
-  function buildInventario(enviados){
-    const map = new Map();
-    for(const r of enviados){
-      const k = r.producto;
-      if(!map.has(k)) map.set(k, { producto:k, kilos:0 });
-      map.get(k).kilos += num(r.kilos);
+  function groupByProductoFromEnviados(rows){
+    const m = new Map();
+    for(const r of rows){
+      const p = String(r.producto||"").trim();
+      if(!p) continue;
+      m.set(p, (m.get(p)||0) + num(r.kilos));
     }
-    return Array.from(map.values()).sort((a,b)=>b.kilos-a.kilos);
+    return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
+      .sort((a,b)=>b.kilos-a.kilos);
   }
 
-  function renderInventario(rows){
-    const body = $('#invBody');
-    body.innerHTML = rows.map(r=>`
+  function groupByProductoFromStock(stock){
+    // Convierte SKUs a "Producto" usando el mapa
+    const m = new Map();
+    for(const s of stock){
+      const sku = String(s.sku||"").trim();
+      if(!sku) continue;
+      const producto = SKU_A_PRODUCTO[sku];
+      if(!producto) continue; // sku no mapeado
+      m.set(producto, (m.get(producto)||0) + num(s.kg));
+    }
+    return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
+      .sort((a,b)=>b.kilos-a.kilos);
+  }
+
+  function buildVendidos(enviadosAgg, realAgg){
+    const realMap = new Map(realAgg.map(x=>[x.producto, num(x.kilos)]));
+    const out = [];
+
+    for(const e of enviadosAgg){
+      const real = realMap.get(e.producto) ?? 0;
+      const vendidos = Math.max(0, num(e.kilos) - real);
+      out.push({ producto: e.producto, kilos: vendidos });
+    }
+
+    out.sort((a,b)=>b.kilos-a.kilos);
+    return out;
+  }
+
+  function renderTabla(tbodyId, rows, labelKg="Kg"){
+    const tb = document.getElementById(tbodyId);
+    tb.innerHTML = rows.map(r=>`
       <tr>
         <td>${esc(r.producto)}</td>
         <td class="kg">${fmt2(r.kilos)}</td>
@@ -313,8 +220,23 @@
     `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
   }
 
-  async function cargarEnviadosDia(fecha){
-    $('#status').textContent = 'Cargando…';
+  function recalcAndRenderAll(){
+    const enviadosAgg = groupByProductoFromEnviados(enviadosRows);
+    const realAgg     = groupByProductoFromStock(stockRows);
+    const vendidosAgg = buildVendidos(enviadosAgg, realAgg);
+
+    renderTabla("enviadosBody", enviadosAgg);
+    renderTabla("realBody", realAgg);
+    renderTabla("vendidosBody", vendidosAgg);
+
+    const notMapped = stockRows.filter(s => s.sku && !SKU_A_PRODUCTO[String(s.sku).trim()]).length;
+    const vs = document.getElementById("vendidosStatus");
+    vs.textContent = notMapped ? `Vendidos: listo (faltan ${notMapped} SKU sin mapear)` : "Vendidos: listo ✅";
+    vs.classList.toggle('bad', !!notMapped);
+  }
+
+  async function loadEnviadosDia(fecha){
+    document.getElementById("status").textContent = "Cargando…";
     const { data, error } = await sb
       .from(T_ENVIADOS)
       .select("id, producto, kilos, created_at")
@@ -323,31 +245,17 @@
 
     if(error){
       console.error(error);
-      $('#status').textContent = 'Error Supabase';
-      return [];
+      document.getElementById("status").textContent = "Error Supabase";
+      return;
     }
-    $('#status').textContent = 'OK ✅';
-    return (data || []).map(x=>({
-      id:x.id, producto:x.producto, kilos:+x.kilos, created_at:x.created_at
-    }));
-  }
-
-  /* ====== CENTRO: Stock real ====== */
-  function renderStock(){
-    const body = $('#stockBody');
-    const sorted = [...stockRows].sort((a,b)=>String(a.sku||'').localeCompare(String(b.sku||''), 'es', {sensitivity:'base'}));
-    body.innerHTML = sorted.map(r=>`
-      <tr>
-        <td><span class="skuPill">${esc(r.sku||'')}</span></td>
-        <td class="kg">${fmt2(r.kg)}</td>
-      </tr>
-    `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin stock</td></tr>`;
+    enviadosRows = (data||[]).map(x=>({producto:x.producto, kilos:+x.kilos}));
+    document.getElementById("status").textContent = "OK ✅";
+    recalcAndRenderAll();
   }
 
   async function loadStock(){
-    const st = $('#stockStatus');
+    const st = document.getElementById("stockStatus");
     st.textContent = "Stock: cargando…";
-
     const { data, error } = await sb
       .from(T_STOCK)
       .select("sku,kg,updated_at")
@@ -359,136 +267,60 @@
       st.classList.remove('ok');
       return;
     }
-    stockRows = data || [];
+    stockRows = (data||[]).map(x=>({sku:x.sku, kg:+x.kg}));
     st.textContent = `Stock: OK • ${stockRows.length}`;
-    renderStock();
+    recalcAndRenderAll();
+  }
+
+  let chEnv = null, chStock = null;
+
+  async function realtimeEnviados(fecha){
+    if(chEnv){ try{ await sb.removeChannel(chEnv);}catch(e){} chEnv=null; }
+    chEnv = sb.channel(`rt-enviados-${fecha}`)
+      .on('postgres_changes',
+        { event:'*', schema:'public', table:T_ENVIADOS, filter:`fecha=eq.${fecha}` },
+        async ()=>{ await loadEnviadosDia(fecha); }
+      )
+      .subscribe((s)=>{
+        const pill = document.getElementById('rt');
+        if(s === 'SUBSCRIBED') pill.textContent = 'LIVE';
+      });
   }
 
   async function realtimeStock(){
-    const st = $('#stockStatus');
-
-    if(stockChannel){
-      try{ await sb.removeChannel(stockChannel); }catch(e){}
-      stockChannel = null;
-    }
-
-    stockChannel = sb
-      .channel('rt-stock-mostrador-dashboard')
+    if(chStock){ try{ await sb.removeChannel(chStock);}catch(e){} chStock=null; }
+    chStock = sb.channel(`rt-stock`)
       .on('postgres_changes',
         { event:'*', schema:'public', table:T_STOCK },
         (payload)=>{
           const r = payload.new;
           if(!r || !r.sku) return;
-
-          const idx = stockRows.findIndex(x => x.sku === r.sku);
-          if(idx >= 0) stockRows[idx] = r;
-          else stockRows.push(r);
-
-          st.textContent = "Stock: realtime ✓";
-          renderStock();
-          renderVendidos(); // ✅ recalcula vendidos en vivo
+          const idx = stockRows.findIndex(x=>x.sku===r.sku);
+          const row = { sku:r.sku, kg:+r.kg };
+          if(idx>=0) stockRows[idx]=row; else stockRows.push(row);
+          document.getElementById("stockStatus").textContent = "Stock: realtime ✓";
+          recalcAndRenderAll();
         }
       )
       .subscribe((s)=>{
-        if(s === 'SUBSCRIBED') st.textContent = "Stock: conectado ✓";
-        else if(s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') st.textContent = "Stock: error realtime";
+        if(s === 'SUBSCRIBED') document.getElementById("stockStatus").textContent = "Stock: conectado ✓";
       });
   }
 
-  /* =========================================================
-     ✅ DERECHA: Kg vendidos por producto (Enviado - Stock)
-  ========================================================= */
-  function buildVendidos(enviados, stock){
-    // 1) sum enviado hoy por PRODUCTO
-    const enviadoPorProducto = new Map();
-    for(const r of enviados){
-      const p = String(r.producto||'').trim();
-      if(!p) continue;
-      enviadoPorProducto.set(p, (enviadoPorProducto.get(p)||0) + num(r.kilos));
-    }
-
-    // 2) index stock por SKU
-    const stockPorSku = new Map();
-    for(const s of stock){
-      const sku = String(s.sku||'').trim();
-      if(!sku) continue;
-      stockPorSku.set(sku, num(s.kg));
-    }
-
-    // 3) calcula vendidos por producto usando el mapeo
-    const out = [];
-    for(const [producto, kgEnviado] of enviadoPorProducto.entries()){
-      const sku = PRODUCTO_A_SKU[producto];
-      if(!sku) continue; // si no hay mapa, no podemos calcular
-
-      const kgStock = stockPorSku.get(sku) ?? 0;
-      const vendidos = Math.max(0, kgEnviado - kgStock);
-
-      out.push({ producto, vendidos });
-    }
-
-    // orden desc
-    out.sort((a,b)=>b.vendidos - a.vendidos);
-    return out;
-  }
-
-  function renderVendidos(){
-    const body = $('#vendidosBody');
-    const rows = buildVendidos(enviadosRows, stockRows);
-
-    body.innerHTML = rows.map(r=>`
-      <tr>
-        <td>${esc(r.producto)}</td>
-        <td class="kg">${fmt2(r.vendidos)}</td>
-      </tr>
-    `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">
-      Sin datos (o falta mapear Producto → SKU)
-    </td></tr>`;
-  }
-
-  /* ====== Realtime enviados del día ====== */
-  async function conectarRealtimeEnviados(fecha){
-    if(enviadosChannel){
-      try{ await sb.removeChannel(enviadosChannel); }catch(e){}
-      enviadosChannel = null;
-    }
-    enviadosChannel = sb.channel(`dash-enviados-${fecha}`)
-      .on('postgres_changes',
-        { event:'*', schema:'public', table:T_ENVIADOS, filter:`fecha=eq.${fecha}` },
-        async ()=>{ await refreshEnviados(); }
-      )
-      .subscribe((s)=>{
-        const pill = $('#rt');
-        if(s === 'SUBSCRIBED'){ pill.textContent = 'LIVE'; pill.classList.add('ok'); }
-        else { pill.textContent = 'RT: '+s; }
-      });
-  }
-
-  async function refreshEnviados(){
-    const fecha = $('#fecha').value;
-    enviadosRows = await cargarEnviadosDia(fecha);
-    renderInventario(buildInventario(enviadosRows));
-    renderVendidos(); // ✅ recalcula vendidos cuando cambian los enviados
-  }
-
-  /* ====== ARRANQUE ====== */
-  $('#fecha').value = todayISODate();
-
-  $('#fecha').addEventListener('change', async ()=>{
-    await refreshEnviados();
-    await conectarRealtimeEnviados($('#fecha').value);
-    // vendidos se recalcula dentro de refreshEnviados()
+  // init
+  document.getElementById("fecha").value = todayISODate();
+  document.getElementById("fecha").addEventListener("change", async ()=>{
+    const f = document.getElementById("fecha").value;
+    await loadEnviadosDia(f);
+    await realtimeEnviados(f);
   });
 
   (async ()=>{
-    await refreshEnviados();
-    await conectarRealtimeEnviados($('#fecha').value);
-
+    const f = document.getElementById("fecha").value;
+    await loadEnviadosDia(f);
     await loadStock();
+    await realtimeEnviados(f);
     await realtimeStock();
-
-    // primer render vendidos con todo cargado
-    renderVendidos();
   })();
 </script>
 
