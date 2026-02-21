@@ -49,6 +49,33 @@
     .submuted{margin-top:8px;font-size:12px;font-weight:900;color:var(--muted);line-height:1.35}
     .badNote{color:var(--danger);font-weight:1000}
     @media (max-width:640px){table{min-width:0}th,td{font-size:12.5px}}
+
+    /* ====== tarjeta 3 número grande ====== */
+    .bigBox{
+      margin-top:60px;
+      border-radius:18px;
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      box-shadow:0 10px 24px rgba(2,6,23,.06);
+      padding:26px 18px;
+      text-align:center;
+    }
+    .bigNum{
+      font-size:64px;
+      font-weight:1000;
+      letter-spacing:.5px;
+      color:#0a7a3b;
+      line-height:1;
+    }
+    .bigLbl{
+      margin-top:10px;
+      font-size:14px;
+      font-weight:1000;
+      color:#64748b;
+    }
+    @media (max-width:980px){
+      .bigNum{font-size:56px}
+    }
   </style>
 </head>
 
@@ -61,7 +88,7 @@
         <div class="logo">VDC</div>
         <div class="title">
           <b>Dashboard Mostrador — VDC 360°</b>
-          <span>1) Enviados · 2) Inventario real · 3) Vendidos (1 − 2)</span>
+          <span>1) Enviados · 2) Inventario real · 3) Total kg vendidos (hoy)</span>
         </div>
       </div>
       <div class="actions">
@@ -95,7 +122,7 @@
       <div class="submuted">*Este total solo sube durante el día.</div>
     </section>
 
-    <!-- 2) Inventario real (por producto, derivado de stock_mostrador via mapa) -->
+    <!-- 2) Inventario real -->
     <section class="card">
       <div class="tag">INVENTARIO REAL</div>
       <div class="tableWrap">
@@ -105,22 +132,22 @@
         </table>
       </div>
       <div class="submuted">
-        *Sale de <b>stock_mostrador</b> en tiempo real, pero convertido a <b>Producto</b> usando mapa SKU→Producto.
+        *Sale de <b>stock_mostrador</b> en tiempo real, convertido a <b>Producto</b> usando mapa SKU→Producto.
       </div>
     </section>
 
-    <!-- 3) Vendidos -->
+    <!-- 3) Total vendido (solo número) -->
     <section class="card">
-      <div class="tag">KG VENDIDOS (HOY)</div>
-      <div class="tableWrap">
-        <table>
-          <thead><tr><th>Producto</th><th class="kg">Kg vendidos</th></tr></thead>
-          <tbody id="vendidosBody"></tbody>
-        </table>
+      <div class="tag">TOTAL DE KG VENDIDOS</div>
+
+      <div class="bigBox">
+        <div id="vendidosTotal" class="bigNum">0.00</div>
+        <div class="bigLbl">Kilogramos vendidos hoy</div>
       </div>
+
       <div class="submuted">
-        Fórmula: <b>Vendidos = max(0, Enviados − InventarioReal)</b><br>
-        <span class="badNote">Si un producto no aparece, falta su SKU en el mapa.</span>
+        Fórmula: Σ <b>max(0, Enviados − InventarioReal)</b> por producto.<br>
+        <span class="badNote">Si falta mapear un SKU, ese producto no entra bien al total.</span>
       </div>
     </section>
 
@@ -140,7 +167,6 @@
   function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
   function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
   function fmt2(n){ const x=Number(n||0); return Number.isFinite(x) ? x.toFixed(2) : "0.00"; }
-
   function todayISODate(){
     const d = new Date();
     const off = d.getTimezoneOffset();
@@ -148,10 +174,7 @@
     return local.toISOString().slice(0,10);
   }
 
-  /* =========================================================
-     ✅ MAPA SKU -> Producto (CLAVE)
-     Aquí es donde haces que tabla 2 y 3 sean por "Producto".
-  ========================================================= */
+  // ✅ MAPA SKU -> Producto
   const SKU_A_PRODUCTO = {
     "CAJA_WASHINGTON": "Caja Washington",
     "MENUDO_CANADIAN": "Menudo Canadian",
@@ -168,10 +191,10 @@
     "CUAJO_RES": "Cuajo"
   };
 
-  let enviadosRows = [];   // enviados crudos del día
-  let stockRows = [];      // stock crudo por sku
+  let enviadosRows = []; // crudo
+  let stockRows = [];    // crudo
 
-  function groupByProductoFromEnviados(rows){
+  function groupEnviados(rows){
     const m = new Map();
     for(const r of rows){
       const p = String(r.producto||"").trim();
@@ -182,35 +205,20 @@
       .sort((a,b)=>b.kilos-a.kilos);
   }
 
-  function groupByProductoFromStock(stock){
-    // Convierte SKUs a "Producto" usando el mapa
+  function groupRealFromStock(stock){
     const m = new Map();
     for(const s of stock){
       const sku = String(s.sku||"").trim();
       if(!sku) continue;
       const producto = SKU_A_PRODUCTO[sku];
-      if(!producto) continue; // sku no mapeado
+      if(!producto) continue;
       m.set(producto, (m.get(producto)||0) + num(s.kg));
     }
     return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
       .sort((a,b)=>b.kilos-a.kilos);
   }
 
-  function buildVendidos(enviadosAgg, realAgg){
-    const realMap = new Map(realAgg.map(x=>[x.producto, num(x.kilos)]));
-    const out = [];
-
-    for(const e of enviadosAgg){
-      const real = realMap.get(e.producto) ?? 0;
-      const vendidos = Math.max(0, num(e.kilos) - real);
-      out.push({ producto: e.producto, kilos: vendidos });
-    }
-
-    out.sort((a,b)=>b.kilos-a.kilos);
-    return out;
-  }
-
-  function renderTabla(tbodyId, rows, labelKg="Kg"){
+  function renderTabla(tbodyId, rows){
     const tb = document.getElementById(tbodyId);
     tb.innerHTML = rows.map(r=>`
       <tr>
@@ -220,14 +228,25 @@
     `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
   }
 
-  function recalcAndRenderAll(){
-    const enviadosAgg = groupByProductoFromEnviados(enviadosRows);
-    const realAgg     = groupByProductoFromStock(stockRows);
-    const vendidosAgg = buildVendidos(enviadosAgg, realAgg);
+  function calcTotalVendidos(enviadosAgg, realAgg){
+    const realMap = new Map(realAgg.map(x=>[x.producto, num(x.kilos)]));
+    let total = 0;
+    for(const e of enviadosAgg){
+      const real = realMap.get(e.producto) ?? 0;
+      total += Math.max(0, num(e.kilos) - real);
+    }
+    return total;
+  }
+
+  function recalcRender(){
+    const enviadosAgg = groupEnviados(enviadosRows);
+    const realAgg = groupRealFromStock(stockRows);
 
     renderTabla("enviadosBody", enviadosAgg);
     renderTabla("realBody", realAgg);
-    renderTabla("vendidosBody", vendidosAgg);
+
+    const totalVend = calcTotalVendidos(enviadosAgg, realAgg);
+    document.getElementById("vendidosTotal").textContent = fmt2(totalVend);
 
     const notMapped = stockRows.filter(s => s.sku && !SKU_A_PRODUCTO[String(s.sku).trim()]).length;
     const vs = document.getElementById("vendidosStatus");
@@ -239,7 +258,7 @@
     document.getElementById("status").textContent = "Cargando…";
     const { data, error } = await sb
       .from(T_ENVIADOS)
-      .select("id, producto, kilos, created_at")
+      .select("producto,kilos,created_at")
       .eq("fecha", fecha)
       .order("created_at", { ascending:false });
 
@@ -250,7 +269,7 @@
     }
     enviadosRows = (data||[]).map(x=>({producto:x.producto, kilos:+x.kilos}));
     document.getElementById("status").textContent = "OK ✅";
-    recalcAndRenderAll();
+    recalcRender();
   }
 
   async function loadStock(){
@@ -269,12 +288,12 @@
     }
     stockRows = (data||[]).map(x=>({sku:x.sku, kg:+x.kg}));
     st.textContent = `Stock: OK • ${stockRows.length}`;
-    recalcAndRenderAll();
+    recalcRender();
   }
 
-  let chEnv = null, chStock = null;
+  let chEnv=null, chStock=null;
 
-  async function realtimeEnviados(fecha){
+  async function rtEnviados(fecha){
     if(chEnv){ try{ await sb.removeChannel(chEnv);}catch(e){} chEnv=null; }
     chEnv = sb.channel(`rt-enviados-${fecha}`)
       .on('postgres_changes',
@@ -287,7 +306,7 @@
       });
   }
 
-  async function realtimeStock(){
+  async function rtStock(){
     if(chStock){ try{ await sb.removeChannel(chStock);}catch(e){} chStock=null; }
     chStock = sb.channel(`rt-stock`)
       .on('postgres_changes',
@@ -299,7 +318,7 @@
           const row = { sku:r.sku, kg:+r.kg };
           if(idx>=0) stockRows[idx]=row; else stockRows.push(row);
           document.getElementById("stockStatus").textContent = "Stock: realtime ✓";
-          recalcAndRenderAll();
+          recalcRender();
         }
       )
       .subscribe((s)=>{
@@ -312,15 +331,15 @@
   document.getElementById("fecha").addEventListener("change", async ()=>{
     const f = document.getElementById("fecha").value;
     await loadEnviadosDia(f);
-    await realtimeEnviados(f);
+    await rtEnviados(f);
   });
 
   (async ()=>{
     const f = document.getElementById("fecha").value;
     await loadEnviadosDia(f);
     await loadStock();
-    await realtimeEnviados(f);
-    await realtimeStock();
+    await rtEnviados(f);
+    await rtStock();
   })();
 </script>
 
