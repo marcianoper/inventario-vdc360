@@ -71,7 +71,7 @@
       grid-template-columns: 1.4fr 1fr 1fr;
       gap:18px;
       margin-top:18px;
-      align-items:start; /* importante */
+      align-items:start;
     }
     @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
 
@@ -82,8 +82,8 @@
       border:1px solid rgba(0,0,0,.06);
       padding:16px;
       position:relative;
-      overflow:visible;          /* antes hidden */
-      min-height:unset;          /* quita altura mínima */
+      overflow:visible;
+      min-height:unset;
     }
     .card .tag{
       position:absolute; top:14px; left:14px;
@@ -110,15 +110,14 @@
       outline:none;
     }
 
-    /* TABLE: ahora sin scroll y auto-height */
     .tableWrap{
       margin-top:46px;
       border-radius:18px;
       border:1px solid rgba(0,0,0,.08);
       background:#fff;
       box-shadow:0 10px 24px rgba(2,6,23,.06);
-      overflow:visible;   /* antes auto */
-      max-height:none;    /* quita tope */
+      overflow:visible;
+      max-height:none;
     }
     table{ width:100%; border-collapse:collapse; min-width:520px; }
     th, td{
@@ -134,16 +133,16 @@
       text-align:left;
       letter-spacing:.2px;
       position:sticky;
-      top:0; /* sticky no afecta si no hay scroll interno */
+      top:0;
       z-index:2;
     }
     td.kg{ text-align:right; }
     tr:hover td{ background:#f9fafb; }
 
-    /* Placeholder vacío */
+    /* Tarjeta vacía */
     .empty{
       margin-top:60px;
-      height:520px; /* para que no se vea mini */
+      height:520px;
       border-radius:18px;
       border:1px dashed rgba(0,0,0,.15);
       background:rgba(255,255,255,.55);
@@ -156,7 +155,24 @@
       padding:18px;
     }
 
-    /* En móviles, permite que la tabla no se corte */
+    /* Para que el inventario REAL se vea tipo “pill” */
+    .skuPill{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#ecfdf5;
+      color:#065f46;
+      font-weight:1000;
+      font-size:12px;
+      border:1px solid rgba(6,95,70,.18);
+    }
+    .submuted{
+      margin-top:8px;
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted);
+    }
+
     @media (max-width:640px){
       table{ min-width:0; }
       th,td{ font-size:12.5px; }
@@ -173,7 +189,7 @@
         <div class="logo">VDC</div>
         <div class="title">
           <b>Dashboard Mostrador — VDC 360°</b>
-          <span>Inventario real visible · (los otros 2 módulos pendientes)</span>
+          <span>Izquierda: enviados del día · Centro: inventario real (stock_mostrador)</span>
         </div>
       </div>
 
@@ -187,6 +203,9 @@
       <span class="pill">📅 Fecha</span>
       <input type="date" id="fecha">
       <span class="pill" id="status">Cargando…</span>
+
+      <!-- estado del stock -->
+      <span class="pill ok" id="stockStatus">Stock: conectando…</span>
     </div>
   </div>
 </header>
@@ -194,26 +213,35 @@
 <div class="wrap">
   <div class="grid">
 
+    <!-- IZQUIERDA: inventario agrupado por enviados (mostrador_enviados) -->
     <section class="card">
       <div class="tag">RESUMEN DEL DÍA</div>
       <div class="tableWrap">
         <table>
           <thead>
-            <tr>
-              <th>Producto</th>
-              <th class="kg">Kilos</th>
-            </tr>
+            <tr><th>Producto</th><th class="kg">Kilos</th></tr>
           </thead>
           <tbody id="invBody"></tbody>
         </table>
       </div>
+      <div class="submuted">*Agrupado por producto con base en lo capturado en “Registro Mostrador”.</div>
     </section>
 
+    <!-- CENTRO: Inventario REAL en vivo desde stock_mostrador (solo KG) -->
     <section class="card">
       <div class="tag">INVENTARIO REAL</div>
-      <div class="empty">(Pendiente) Aquí me dices qué vamos a mostrar.</div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr><th>SKU</th><th class="kg">Kg</th></tr>
+          </thead>
+          <tbody id="stockBody"></tbody>
+        </table>
+      </div>
+      <div class="submuted">*Esto se descuenta en tiempo real cuando escanean / venden (según tu otro sistema).</div>
     </section>
 
+    <!-- DERECHA: vacío -->
     <section class="card">
       <div class="tag">TOTAL DE KG VENDIDOS</div>
       <div class="empty">(Pendiente) Aquí me dices qué vamos a mostrar.</div>
@@ -225,15 +253,19 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+  /* ====== SUPABASE ====== */
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
-  const T_ENVIADOS = "mostrador_enviados";
+  /* ====== Tablas ====== */
+  const T_ENVIADOS = "mostrador_enviados";   // para la izquierda
+  const T_STOCK    = "stock_mostrador";      // para inventario real (centro)
 
   const $ = (s)=>document.querySelector(s);
   function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
   function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+  function fmt2(n){ const x=Number(n||0); return Number.isFinite(x) ? x.toFixed(2) : "0.00"; }
 
   function todayISODate(){
     const d = new Date();
@@ -242,6 +274,7 @@
     return local.toISOString().slice(0,10);
   }
 
+  /* ====== IZQUIERDA: Agrupar enviados del día (mostrador_enviados) ====== */
   function buildInventario(enviados){
     const map = new Map();
     for(const r of enviados){
@@ -257,12 +290,12 @@
     body.innerHTML = rows.map(r=>`
       <tr>
         <td>${esc(r.producto)}</td>
-        <td class="kg">${r.kilos.toFixed(2)}</td>
+        <td class="kg">${fmt2(r.kilos)}</td>
       </tr>
-    `).join('');
+    `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
   }
 
-  async function cargarDia(fecha){
+  async function cargarEnviadosDia(fecha){
     $('#status').textContent = 'Cargando…';
     const { data, error } = await sb
       .from(T_ENVIADOS)
@@ -281,13 +314,82 @@
     }));
   }
 
-  let rtChannel = null;
-  async function conectarRealtime(fecha, onRefresh){
-    if(rtChannel){
-      try{ await sb.removeChannel(rtChannel); }catch(e){}
-      rtChannel = null;
+  /* ====== CENTRO: Inventario REAL (stock_mostrador) en vivo ====== */
+  let stockRows = [];
+
+  function renderStock(){
+    const body = $('#stockBody');
+
+    // ordenado por SKU
+    const sorted = [...stockRows].sort((a,b)=>String(a.sku||'').localeCompare(String(b.sku||''), 'es', {sensitivity:'base'}));
+
+    body.innerHTML = sorted.map(r=>`
+      <tr>
+        <td><span class="skuPill">${esc(r.sku||'')}</span></td>
+        <td class="kg">${fmt2(r.kg)}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin stock</td></tr>`;
+  }
+
+  async function loadStock(){
+    const st = $('#stockStatus');
+    st.textContent = "Stock: cargando…";
+
+    const { data, error } = await sb
+      .from(T_STOCK)
+      .select("sku,kg,updated_at")
+      .order("sku", { ascending:true });
+
+    if(error){
+      console.error(error);
+      st.textContent = "Stock: error";
+      st.classList.remove('ok');
+      return;
     }
-    rtChannel = sb.channel(`dash-rt-${fecha}`)
+    stockRows = data || [];
+    st.textContent = `Stock: OK • ${stockRows.length}`;
+    renderStock();
+  }
+
+  let stockChannel = null;
+  async function realtimeStock(){
+    const st = $('#stockStatus');
+
+    if(stockChannel){
+      try{ await sb.removeChannel(stockChannel); }catch(e){}
+      stockChannel = null;
+    }
+
+    stockChannel = sb
+      .channel('rt-stock-mostrador-dashboard')
+      .on('postgres_changes',
+        { event:'*', schema:'public', table:T_STOCK },
+        (payload)=>{
+          const r = payload.new;
+          if(!r || !r.sku) return;
+
+          const idx = stockRows.findIndex(x => x.sku === r.sku);
+          if(idx >= 0) stockRows[idx] = r;
+          else stockRows.push(r);
+
+          st.textContent = "Stock: realtime ✓";
+          renderStock();
+        }
+      )
+      .subscribe((s)=>{
+        if(s === 'SUBSCRIBED') st.textContent = "Stock: conectado ✓";
+        else if(s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') st.textContent = "Stock: error realtime";
+      });
+  }
+
+  /* ====== Realtime enviados del día (izquierda) ====== */
+  let enviadosChannel = null;
+  async function conectarRealtimeEnviados(fecha, onRefresh){
+    if(enviadosChannel){
+      try{ await sb.removeChannel(enviadosChannel); }catch(e){}
+      enviadosChannel = null;
+    }
+    enviadosChannel = sb.channel(`dash-enviados-${fecha}`)
       .on('postgres_changes',
         { event:'*', schema:'public', table:T_ENVIADOS, filter:`fecha=eq.${fecha}` },
         async ()=>{ onRefresh && onRefresh(); }
@@ -299,22 +401,29 @@
       });
   }
 
-  async function refresh(){
+  async function refreshEnviados(){
     const fecha = $('#fecha').value;
-    const enviados = await cargarDia(fecha);
-    const inventario = buildInventario(enviados);
-    renderInventario(inventario);
+    const enviados = await cargarEnviadosDia(fecha);
+    const inv = buildInventario(enviados);
+    renderInventario(inv);
   }
 
+  /* ====== ARRANQUE ====== */
   $('#fecha').value = todayISODate();
+
   $('#fecha').addEventListener('change', async ()=>{
-    await refresh();
-    await conectarRealtime($('#fecha').value, refresh);
+    await refreshEnviados();
+    await conectarRealtimeEnviados($('#fecha').value, refreshEnviados);
   });
 
   (async ()=>{
-    await refresh();
-    await conectarRealtime($('#fecha').value, refresh);
+    // izquierda
+    await refreshEnviados();
+    await conectarRealtimeEnviados($('#fecha').value, refreshEnviados);
+
+    // centro (stock real)
+    await loadStock();
+    await realtimeStock();
   })();
 </script>
 
