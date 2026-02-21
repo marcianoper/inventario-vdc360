@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VDC 360° — Dashboard Mostrador</title>
+
+  <style>
+    :root{
+      --bg:#e9dcc7;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --brand:#0a7a3b;
+      --brand2:#0f9a52;
+      --line:#e5e7eb;
+      --shadow:0 20px 50px rgba(0,0,0,.12);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 40px}
+    header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter:saturate(140%) blur(10px);
+      background:rgba(233,220,199,.72);
+      border-bottom:1px solid rgba(0,0,0,.08);
+    }
+    .top{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px 0; flex-wrap:wrap;
+    }
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
+      box-shadow:0 10px 20px rgba(10,122,59,.20);
+      display:grid;place-items:center;
+      color:#fff;font-weight:1000;letter-spacing:.5px;
+      user-select:none;
+    }
+    .title b{display:block;font-size:14px;font-weight:1000}
+    .title span{display:block;margin-top:4px;font-size:12px;color:var(--muted);font-weight:900}
+
+    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:999px;
+      font-weight:1000;font-size:12px;
+      border:1px solid rgba(0,0,0,.08);
+      background:rgba(255,255,255,.75);
+      box-shadow:0 8px 18px rgba(2,6,23,.06);
+    }
+    .pill.ok{ color:var(--brand); background:rgba(10,122,59,.10); border-color: rgba(10,122,59,.18); }
+    .btnLink{
+      display:inline-flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:14px;
+      text-decoration:none;font-weight:1000;
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      box-shadow:0 8px 18px rgba(2,6,23,.06);
+      color:#111827;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      gap:18px;
+      margin-top:18px;
+    }
+    @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
+
+    .card{
+      background:var(--card);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(0,0,0,.06);
+      padding:16px;
+      position:relative;
+      overflow:hidden;
+      min-height:360px;
+    }
+    .card .tag{
+      position:absolute; top:14px; left:14px;
+      background:#0b0f17;
+      color:#fff;
+      font-weight:1000;
+      font-size:12px;
+      padding:8px 12px;
+      border-radius:10px;
+      letter-spacing:.7px;
+    }
+
+    /* Chart */
+    .chartBox{
+      margin-top:46px;
+      height:280px;
+      border-radius:18px;
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      box-shadow:0 10px 24px rgba(2,6,23,.06);
+      padding:10px;
+    }
+    canvas{ width:100%; height:100%; }
+
+    /* Table */
+    .tableWrap{
+      margin-top:46px;
+      border-radius:18px;
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      box-shadow:0 10px 24px rgba(2,6,23,.06);
+      overflow:auto;
+    }
+    table{ width:100%; border-collapse:collapse; min-width:420px; }
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid rgba(229,231,235,.9);
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+    }
+    th{
+      background:#111827;
+      color:#fff;
+      position:sticky; top:0;
+      z-index:2;
+      text-align:left;
+      letter-spacing:.2px;
+    }
+    td.kg{ text-align:right; }
+    tr:hover td{ background:#f9fafb; }
+
+    /* Total */
+    .totalBox{
+      margin-top:46px;
+      height: calc(100% - 46px);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:10px;
+      text-align:center;
+    }
+    .totalBox .n{
+      font-size:64px;
+      font-weight:1000;
+      color:var(--brand);
+      line-height:1;
+    }
+    .totalBox .lab{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:1000;
+    }
+
+    .rowTop{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      margin-top:14px;
+    }
+    input[type="date"]{
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,.10);
+      font-weight:900;
+      background:#fff;
+      box-shadow:0 8px 18px rgba(2,6,23,.06);
+      outline:none;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">VDC</div>
+        <div class="title">
+          <b>Dashboard Mostrador — VDC 360°</b>
+          <span>Resumen del día · Inventario real · Total KG</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btnLink" href="https://marcianoper.github.io/vdc-central/">← VDC Central</a>
+        <a class="btnLink" href="registro_mostrador.html">Ir a Registro Mostrador</a>
+        <span id="rt" class="pill ok">LIVE</span>
+      </div>
+    </div>
+
+    <div class="rowTop">
+      <span class="pill">📅 Fecha</span>
+      <input type="date" id="fecha">
+      <span class="pill" id="status">Cargando…</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- RESUMEN -->
+    <section class="card">
+      <div class="tag">RESUMEN DEL DÍA</div>
+      <div class="chartBox">
+        <canvas id="chartResumen"></canvas>
+      </div>
+    </section>
+
+    <!-- INVENTARIO -->
+    <section class="card">
+      <div class="tag">INVENTARIO REAL</div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr><th>Producto</th><th class="kg">Kilos</th></tr>
+          </thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TOTAL -->
+    <section class="card">
+      <div class="tag">TOTAL DE KG VENDIDOS</div>
+      <div class="totalBox">
+        <div class="n" id="totalKg">0.00</div>
+        <div class="lab">Kilogramos vendidos hoy</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  /* ====== SUPABASE (MISMO QUE TU MOSTRADOR) ====== */
+  const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const T_ENVIADOS = "mostrador_enviados";
+
+  const $ = (s)=>document.querySelector(s);
+  function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+  function todayISODate(){
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off*60000);
+    return local.toISOString().slice(0,10);
+  }
+
+  /* ====== RESUMEN (misma lógica que tu buildResumen) ====== */
+  function buildResumen(enviados){
+    const map = new Map();
+    for(const r of enviados){
+      const k = r.producto;
+      if(!map.has(k)) map.set(k, { producto:k, kilos:0, piezas:0 });
+      const o = map.get(k);
+      o.kilos += num(r.kilos);
+      o.piezas += parseInt(r.piezas||0,10);
+    }
+    return Array.from(map.values()).sort((a,b)=>b.kilos-a.kilos);
+  }
+
+  /* ====== UI: tabla + total ====== */
+  function renderInventario(rows){
+    const body = $('#invBody');
+    body.innerHTML = rows.map(r=>`
+      <tr>
+        <td>${esc(r.producto)}</td>
+        <td class="kg">${r.kilos.toFixed(2)}</td>
+      </tr>
+    `).join('');
+  }
+  function renderTotal(rows){
+    const total = rows.reduce((acc,r)=>acc + num(r.kilos), 0);
+    $('#totalKg').textContent = total.toFixed(2);
+  }
+
+  /* ====== CHART (mismo canvas id=chartResumen) ====== */
+  let chartResumen = null;
+  function renderChart(rows){
+    const labels = rows.map(r=>r.producto);
+    const kilos  = rows.map(r=>Number(r.kilos.toFixed(2)));
+    const piezas = rows.map(r=>r.piezas);
+
+    const canvas = document.getElementById('chartResumen');
+    if(!canvas) return;
+
+    if(chartResumen){
+      chartResumen.data.labels = labels;
+      chartResumen.data.datasets[0].data = kilos;
+      chartResumen.data.datasets[1].data = piezas;
+      chartResumen.update();
+      return;
+    }
+
+    chartResumen = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Kilos', data: kilos },
+          { label: 'Piezas', data: piezas }
+        ]
+      },
+      options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+    });
+  }
+
+  /* ====== CARGA DÍA ====== */
+  async function cargarDia(fecha){
+    $('#status').textContent = 'Cargando…';
+
+    const { data, error } = await sb
+      .from(T_ENVIADOS)
+      .select("id, producto, kilos, piezas, created_at")
+      .eq("fecha", fecha)
+      .order("created_at", { ascending:false });
+
+    if(error){
+      console.error(error);
+      $('#status').textContent = 'Error Supabase';
+      return [];
+    }
+    $('#status').textContent = 'OK ✅';
+    return (data || []).map(x=>({
+      id:x.id,
+      producto:x.producto,
+      kilos:+x.kilos,
+      piezas:+(x.piezas||0),
+      created_at:x.created_at
+    }));
+  }
+
+  /* ====== REALTIME (solo UPDATE/INSERT/DELETE del día) ====== */
+  let rtChannel = null;
+  async function conectarRealtime(fecha, onRefresh){
+    if(rtChannel){
+      try{ await sb.removeChannel(rtChannel); }catch(e){}
+      rtChannel = null;
+    }
+
+    rtChannel = sb.channel(`dash-rt-${fecha}`)
+      .on('postgres_changes',
+        { event:'*', schema:'public', table:T_ENVIADOS, filter:`fecha=eq.${fecha}` },
+        async ()=>{ onRefresh && onRefresh(); }
+      )
+      .subscribe((s)=>{
+        const pill = $('#rt');
+        if(s === 'SUBSCRIBED'){ pill.textContent = 'LIVE'; pill.classList.add('ok'); }
+        else { pill.textContent = 'RT: '+s; }
+      });
+  }
+
+  async function refresh(){
+    const fecha = $('#fecha').value;
+    const enviados = await cargarDia(fecha);
+    const resumen = buildResumen(enviados);
+    renderChart(resumen);
+    renderInventario(resumen);
+    renderTotal(resumen);
+  }
+
+  /* ====== ARRANQUE ====== */
+  $('#fecha').value = todayISODate();
+
+  $('#fecha').addEventListener('change', async ()=>{
+    await refresh();
+    await conectarRealtime($('#fecha').value, refresh);
+  });
+
+  (async ()=>{
+    await refresh();
+    await conectarRealtime($('#fecha').value, refresh);
+  })();
+</script>
+
+</body>
+</html>
