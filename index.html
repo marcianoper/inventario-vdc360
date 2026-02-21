@@ -28,7 +28,9 @@
         var(--bg);
       color:var(--ink);
     }
-    .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 34px}
+
+    /* 👇 OJO: bajé el max-width para que no se estire de más */
+    .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 34px}
 
     /* ===== Header ===== */
     header{
@@ -83,16 +85,20 @@
       outline:none;
     }
 
-    /* ===== Grid 3 columnas ===== */
+    /* ===== Dashboard row (siempre en una fila) ===== */
+    .dashRow{
+      margin-top:16px;
+      overflow-x:auto;             /* 👈 si no cabe, scroll del dashboard (no de tablas) */
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+    }
     .grid{
       display:grid;
-      grid-template-columns: 1.5fr 1.1fr .65fr; /* tabla 3 más angosta */
       gap:16px;
-      align-items:stretch; /* importante para igualar altura */
-      margin-top:16px;
-    }
-    @media (max-width:980px){
-      .grid{grid-template-columns:1fr}
+      align-items:stretch;
+      min-width: 980px;            /* 👈 fuerza que se mantenga 1 fila */
+      /* 👇 aquí hacemos la primera MÁS angosta */
+      grid-template-columns: 0.95fr 1.05fr 0.60fr;
     }
 
     /* ===== Cards ===== */
@@ -104,16 +110,10 @@
       padding:14px;
       display:flex;
       flex-direction:column;
-      min-height:520px; /* para que se sienta dashboard */
+      min-height:520px;
     }
 
-    .head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-    }
+    .head{margin-bottom:10px}
     .head h2{
       margin:0;
       font-size:12px;
@@ -130,16 +130,16 @@
       line-height:1.35;
     }
 
-    /* ===== Tables ===== */
+    /* ===== Tables (sin scroll lateral) ===== */
     .tableWrap{
       flex:1;
       border:1px solid rgba(0,0,0,.10);
       border-radius:18px;
-      overflow:hidden; /* no scroll lateral */
+      overflow:hidden;
       background:#fff;
       box-shadow:0 10px 24px rgba(2,6,23,.06);
     }
-    table{width:100%;border-collapse:collapse}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;} /* 👈 evita que se desborde */
     thead th{
       background:#111827;color:#fff;
       padding:10px 10px;
@@ -155,15 +155,12 @@
       font-size:13px;
       font-weight:900;
       vertical-align:middle;
-    }
-    tbody tr:hover td{ background:#f9fafb; }
-    .kg{ text-align:right; font-variant-numeric: tabular-nums; }
-    .producto{
-      max-width: 1px; /* fuerza el ellipsis en tablas angostas */
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
     }
+    tbody tr:hover td{ background:#f9fafb; }
+    .kg{ text-align:right; font-variant-numeric: tabular-nums; }
 
     /* Tabla 3 (solo números) */
     .onlyNums thead th{ text-align:right; }
@@ -182,12 +179,6 @@
       line-height:1.35;
     }
     .badNote{ color:var(--danger); font-weight:1000; }
-
-    /* Mobile polish */
-    @media (max-width:520px){
-      .card{min-height:unset}
-      .onlyNums tbody td{font-size:16px}
-    }
   </style>
 </head>
 
@@ -220,78 +211,77 @@
 </header>
 
 <div class="wrap">
-  <div class="grid">
 
-    <!-- 1) Enviados -->
-    <section class="card">
-      <div class="head">
-        <div>
+  <!-- 👇 contenedor que mantiene todo en 1 fila -->
+  <div class="dashRow">
+    <div class="grid">
+
+      <!-- 1) Enviados (más angosta) -->
+      <section class="card">
+        <div class="head">
           <h2>Resumen del día (Enviados)</h2>
           <p>Lo que se ha mandado a mostrador hoy (solo sube).</p>
         </div>
-      </div>
 
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:72%">Producto</th>
-              <th class="kg" style="width:28%">Kg</th>
-            </tr>
-          </thead>
-          <tbody id="enviadosBody"></tbody>
-        </table>
-      </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:68%">Producto</th>
+                <th class="kg" style="width:32%">Kg</th>
+              </tr>
+            </thead>
+            <tbody id="enviadosBody"></tbody>
+          </table>
+        </div>
 
-      <div class="footerHint">Tip: ordenado por kg (más movido arriba).</div>
-    </section>
+        <div class="footerHint">Ordenado por kg (más movido arriba).</div>
+      </section>
 
-    <!-- 2) Inventario real -->
-    <section class="card">
-      <div class="head">
-        <div>
+      <!-- 2) Inventario real -->
+      <section class="card">
+        <div class="head">
           <h2>Inventario real</h2>
-          <p>Stock en tiempo real en mostrador (sale de <b>stock_mostrador</b>).</p>
+          <p>Stock en tiempo real (sale de <b>stock_mostrador</b>).</p>
         </div>
-      </div>
 
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:72%">Producto</th>
-              <th class="kg" style="width:28%">Kg</th>
-            </tr>
-          </thead>
-          <tbody id="realBody"></tbody>
-        </table>
-      </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:68%">Producto</th>
+                <th class="kg" style="width:32%">Kg</th>
+              </tr>
+            </thead>
+            <tbody id="realBody"></tbody>
+          </table>
+        </div>
 
-      <div class="footerHint">
-        Convertimos SKU→Producto con mapa. <span class="badNote">Si falta un SKU, no se refleja bien.</span>
-      </div>
-    </section>
+        <div class="footerHint">
+          Convertimos SKU→Producto con mapa. <span class="badNote">Si falta un SKU, no se refleja.</span>
+        </div>
+      </section>
 
-    <!-- 3) Vendidos (solo números) -->
-    <section class="card">
-      <div class="head">
-        <div>
+      <!-- 3) Vendidos (solo números) -->
+      <section class="card">
+        <div class="head">
           <h2>Kg vendidos</h2>
-          <p>Solo números: 1 por producto, en el mismo orden de “Enviados”.</p>
+          <p>Solo números (mismo orden que “Enviados”).</p>
         </div>
-      </div>
 
-      <div class="tableWrap onlyNums">
-        <table>
-          <thead><tr><th>Kg</th></tr></thead>
-          <tbody id="vendidosOnlyBody"></tbody>
-        </table>
-      </div>
+        <div class="tableWrap onlyNums">
+          <table>
+            <thead><tr><th>Kg</th></tr></thead>
+            <tbody id="vendidosOnlyBody"></tbody>
+          </table>
+        </div>
 
-      <div class="footerHint">Cada fila corresponde a la misma fila de la tabla 1.</div>
-    </section>
+        <div class="footerHint">Cada fila corresponde a la misma fila de la tabla 1.</div>
+      </section>
 
+    </div>
   </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -313,7 +303,6 @@
     return local.toISOString().slice(0,10);
   }
 
-  // ✅ MAPA SKU -> Producto (ajústalo con tus SKUs reales)
   const SKU_A_PRODUCTO = {
     "CAJA_WASHINGTON": "Caja Washington",
     "MENUDO_CANADIAN": "Menudo Canadian",
@@ -340,7 +329,6 @@
       if(!p) continue;
       m.set(p, (m.get(p)||0) + num(r.kilos));
     }
-    // orden por kg (más grande arriba)
     return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
       .sort((a,b)=>b.kilos-a.kilos);
   }
@@ -354,7 +342,6 @@
       if(!producto) continue;
       m.set(producto, (m.get(producto)||0) + num(s.kg));
     }
-    // no importa el orden aquí, porque tabla 3 se alinea a tabla 1
     return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}));
   }
 
@@ -362,21 +349,20 @@
     const tb = document.getElementById("enviadosBody");
     tb.innerHTML = rows.map(r=>`
       <tr>
-        <td class="producto" title="${esc(r.producto)}">${esc(r.producto)}</td>
+        <td title="${esc(r.producto)}">${esc(r.producto)}</td>
         <td class="kg">${fmt2(r.kilos)}</td>
       </tr>
     `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
   }
 
-  function renderTablaReal(rows, orderByEnviados){
-    // para que visualmente siga el mismo orden que tabla 1
-    const map = new Map(rows.map(x=>[x.producto, num(x.kilos)]));
+  function renderTablaReal(realAgg, orderByEnviados){
+    const map = new Map(realAgg.map(x=>[x.producto, num(x.kilos)]));
     const ordered = orderByEnviados.map(e=>({producto:e.producto, kilos: map.get(e.producto) ?? 0}));
 
     const tb = document.getElementById("realBody");
     tb.innerHTML = ordered.map(r=>`
       <tr>
-        <td class="producto" title="${esc(r.producto)}">${esc(r.producto)}</td>
+        <td title="${esc(r.producto)}">${esc(r.producto)}</td>
         <td class="kg">${fmt2(r.kilos)}</td>
       </tr>
     `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
@@ -399,13 +385,12 @@
     const realAggRaw  = groupRealFromStock(stockRows);
 
     renderTablaEnviados(enviadosAgg);
-    renderTablaReal(realAggRaw, enviadosAgg);          // 👈 alineada al orden de tabla 1
+    renderTablaReal(realAggRaw, enviadosAgg);
     renderVendidosSoloNumeros(enviadosAgg, realAggRaw);
 
     const notMapped = stockRows.filter(s => s.sku && !SKU_A_PRODUCTO[String(s.sku).trim()]).length;
     const vs = document.getElementById("vendidosStatus");
     vs.textContent = notMapped ? `Vendidos: listo (faltan ${notMapped} SKU sin mapear)` : "Vendidos: listo ✅";
-    vs.classList.toggle('bad', !!notMapped);
   }
 
   async function loadEnviadosDia(fecha){
@@ -437,7 +422,6 @@
     if(error){
       console.error(error);
       st.textContent = "Stock: error";
-      st.classList.remove('ok');
       return;
     }
     stockRows = (data||[]).map(x=>({sku:x.sku, kg:+x.kg}));
@@ -480,7 +464,6 @@
       });
   }
 
-  // init
   document.getElementById("fecha").value = todayISODate();
   document.getElementById("fecha").addEventListener("change", async ()=>{
     const f = document.getElementById("fecha").value;
