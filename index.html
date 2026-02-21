@@ -34,7 +34,7 @@
     .rowTop{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
     input[type="date"]{padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,.10);font-weight:900;background:#fff;box-shadow:0 8px 18px rgba(2,6,23,.06);outline:none}
 
-    .grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:18px;margin-top:18px;align-items:start}
+    .grid{display:grid;grid-template-columns:1.4fr 1fr 0.75fr;gap:18px;margin-top:18px;align-items:start}
     @media (max-width:980px){.grid{grid-template-columns:1fr}}
 
     .card{background:var(--card);border-radius:22px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.06);padding:16px;position:relative;overflow:visible}
@@ -50,31 +50,13 @@
     .badNote{color:var(--danger);font-weight:1000}
     @media (max-width:640px){table{min-width:0}th,td{font-size:12.5px}}
 
-    /* ====== tarjeta 3 número grande ====== */
-    .bigBox{
-      margin-top:60px;
-      border-radius:18px;
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff;
-      box-shadow:0 10px 24px rgba(2,6,23,.06);
-      padding:26px 18px;
-      text-align:center;
-    }
-    .bigNum{
-      font-size:64px;
-      font-weight:1000;
-      letter-spacing:.5px;
-      color:#0a7a3b;
-      line-height:1;
-    }
-    .bigLbl{
-      margin-top:10px;
-      font-size:14px;
-      font-weight:1000;
-      color:#64748b;
-    }
-    @media (max-width:980px){
-      .bigNum{font-size:56px}
+    /* ====== TABLA 3 compacta (solo números) ====== */
+    .tableWrap.slim table{ min-width: 0; }
+    .tableWrap.slim th, .tableWrap.slim td{ text-align:right; }
+    .tableWrap.slim th{ text-align:right; }
+    .numCell{
+      font-variant-numeric: tabular-nums;
+      letter-spacing:.2px;
     }
   </style>
 </head>
@@ -88,7 +70,7 @@
         <div class="logo">VDC</div>
         <div class="title">
           <b>Dashboard Mostrador — VDC 360°</b>
-          <span>1) Enviados · 2) Inventario real · 3) Total kg vendidos (hoy)</span>
+          <span>1) Enviados · 2) Inventario real · 3) Kg vendidos (lista)</span>
         </div>
       </div>
       <div class="actions">
@@ -136,18 +118,18 @@
       </div>
     </section>
 
-    <!-- 3) Total vendido (solo número) -->
+    <!-- 3) Vendidos (solo números, 1 por producto, orden igual a tabla 1) -->
     <section class="card">
-      <div class="tag">TOTAL DE KG VENDIDOS</div>
-
-      <div class="bigBox">
-        <div id="vendidosTotal" class="bigNum">0.00</div>
-        <div class="bigLbl">Kilogramos vendidos hoy</div>
+      <div class="tag">KG VENDIDOS</div>
+      <div class="tableWrap slim">
+        <table>
+          <thead><tr><th>Kg</th></tr></thead>
+          <tbody id="vendidosOnlyBody"></tbody>
+        </table>
       </div>
-
       <div class="submuted">
-        Fórmula: Σ <b>max(0, Enviados − InventarioReal)</b> por producto.<br>
-        <span class="badNote">Si falta mapear un SKU, ese producto no entra bien al total.</span>
+        *Cada fila corresponde a la misma fila de la tabla 1 (enviados).<br>
+        <span class="badNote">Si un SKU no está mapeado, ese producto puede salir como 0.</span>
       </div>
     </section>
 
@@ -163,7 +145,6 @@
   const T_ENVIADOS = "mostrador_enviados";
   const T_STOCK    = "stock_mostrador";
 
-  const $ = (s)=>document.querySelector(s);
   function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
   function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
   function fmt2(n){ const x=Number(n||0); return Number.isFinite(x) ? x.toFixed(2) : "0.00"; }
@@ -191,8 +172,8 @@
     "CUAJO_RES": "Cuajo"
   };
 
-  let enviadosRows = []; // crudo
-  let stockRows = [];    // crudo
+  let enviadosRows = [];
+  let stockRows = [];
 
   function groupEnviados(rows){
     const m = new Map();
@@ -202,7 +183,7 @@
       m.set(p, (m.get(p)||0) + num(r.kilos));
     }
     return Array.from(m.entries()).map(([producto,kilos])=>({producto,kilos}))
-      .sort((a,b)=>b.kilos-a.kilos);
+      .sort((a,b)=>b.kilos-a.kilos); // orden manda más primero
   }
 
   function groupRealFromStock(stock){
@@ -228,14 +209,19 @@
     `).join('') || `<tr><td colspan="2" style="color:#64748b;font-weight:900">Sin datos</td></tr>`;
   }
 
-  function calcTotalVendidos(enviadosAgg, realAgg){
+  function renderVendidosSoloNumeros(enviadosAgg, realAgg){
     const realMap = new Map(realAgg.map(x=>[x.producto, num(x.kilos)]));
-    let total = 0;
-    for(const e of enviadosAgg){
+
+    // misma cantidad de filas y mismo orden que enviadosAgg
+    const out = enviadosAgg.map(e=>{
       const real = realMap.get(e.producto) ?? 0;
-      total += Math.max(0, num(e.kilos) - real);
-    }
-    return total;
+      return Math.max(0, num(e.kilos) - real);
+    });
+
+    const tb = document.getElementById("vendidosOnlyBody");
+    tb.innerHTML = out.map(v=>`
+      <tr><td class="numCell">${fmt2(v)}</td></tr>
+    `).join('') || `<tr><td style="color:#64748b;font-weight:900">0.00</td></tr>`;
   }
 
   function recalcRender(){
@@ -244,9 +230,7 @@
 
     renderTabla("enviadosBody", enviadosAgg);
     renderTabla("realBody", realAgg);
-
-    const totalVend = calcTotalVendidos(enviadosAgg, realAgg);
-    document.getElementById("vendidosTotal").textContent = fmt2(totalVend);
+    renderVendidosSoloNumeros(enviadosAgg, realAgg);
 
     const notMapped = stockRows.filter(s => s.sku && !SKU_A_PRODUCTO[String(s.sku).trim()]).length;
     const vs = document.getElementById("vendidosStatus");
