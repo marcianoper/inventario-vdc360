@@ -88,7 +88,7 @@
   <!-- DINERO POR PRODUCTO -->
   <section class="panel on" id="p-din">
     <h2>Dinero por producto</h2>
-    <p class="nota">Debe haber = (Enviado − Devuelto) × precio. Es lo que tiene que existir en caja, se haya escaneado o no el ticket.</p>
+    <p class="nota">Debe haber = lo vendido en tickets + lo que salió sin ticket (Enviado − Devuelto − Vendido) a precio por kilo. Durante el día es la proyección al cierre; la Diferencia se calcula ya cerrado, con las devoluciones capturadas.</p>
     <div class="wrap"><table>
       <thead><tr><th>Producto</th><th>Precio/kg</th><th>Enviado</th><th>Vendido (tickets)</th><th>Devuelto</th><th>Queda</th><th>Debe haber</th><th>Diferencia</th></tr></thead>
       <tbody id="tDin"></tbody><tfoot id="fDin"></tfoot>
@@ -257,10 +257,14 @@ function pintar(d, precios, fecha){
     p.$que = Math.max(p.que,0)*pr;
     // Lo que tiene que estar en caja: lo que salió y no regresó.
     // Mientras el día sigue abierto, lo que aún les queda no cuenta como dinero.
-    p.$caja = p.$env - p.$dev - (abierto ? p.$que : 0);
+    // Al cierre: los kilos que salieron y no regresaron ni aparecen en tickets son el faltante.
+    // Se valoran a precio por kilo (así abrir una caja y venderla suelta no cuenta como faltante).
+    p.faltanteKg = p.env - p.dev - p.ven;
+    const prFalt = precioKg(precios, p.sku, PRODUCTOS_CAJA.has(p.sku) ? "kg" : null) ?? pr;
+    p.$dif = abierto ? 0 : p.faltanteKg * prFalt;
     p.$proy = p.$ven + p.ventaEsperada * pr;                  // proyección al cierre
+    p.$caja = abierto ? p.$proy : p.$ven + p.$dif;            // lo que debe haber en caja
     p.$regresan = p.regresanKg * pr;
-    p.$dif = p.$caja - p.$ven;
     T.env+=p.$env; T.ven+=p.$ven; T.dev+=p.$dev; T.que+=p.$que; T.caja+=p.$caja; T.proy+=p.$proy; T.regresan+=p.$regresan;
   });
   filas.sort((a,b)=>b.$env-a.$env || b.env-a.env);
@@ -281,9 +285,15 @@ function pintar(d, precios, fecha){
     $("kCajaS").textContent = hayDevoluciones ? "(enviado − devuelto) × precio" : "falta capturar devoluciones";
   }
   const dif = T.caja - T.ven;
-  $("kDif").textContent = m(dif);
-  $("kDif").className = "v " + (Math.abs(dif) <= TOLERANCIA ? "pos" : "neg");
-  $("kDifS").textContent = Math.abs(dif) <= TOLERANCIA ? "caja y tickets cuadran" : (dif>0 ? "falta escanear tickets o falta dinero" : "tickets de más vs mercancía");
+  if(abierto){
+    $("kDif").textContent = "—";
+    $("kDif").className = "v";
+    $("kDifS").textContent = "se calcula al cierre, con las devoluciones";
+  }else{
+    $("kDif").textContent = m(dif);
+    $("kDif").className = "v " + (Math.abs(dif) <= TOLERANCIA ? "pos" : "neg");
+    $("kDifS").textContent = Math.abs(dif) <= TOLERANCIA ? "caja y tickets cuadran" : (dif>0 ? "salió producto sin ticket" : "tickets de más vs mercancía");
+  }
 
   // Alertas
   const msgs = [];
@@ -302,13 +312,13 @@ function pintar(d, precios, fecha){
 
   // DINERO POR PRODUCTO
   $("tDin").innerHTML = filas.length ? filas.map(p=>{
-    const difCls = Math.abs(p.$dif) <= TOLERANCIA/5 ? "" : (p.$dif>0 ? "p-warn" : "p-info");
+    const difCls = abierto || Math.abs(p.$dif) <= TOLERANCIA/5 ? "" : (p.$dif>0 ? "p-warn" : "p-info");
     return `<tr><td><b>${nombreBonito(p.sku)}</b><div class="muted" style="font-size:12px">${f2(p.env)} kg enviados · ${f2(p.ven)} kg vendidos</div></td>
       <td>${celdaPrecio(p)}</td><td>${m(p.$env)}</td><td>${m(p.$ven)}</td><td>${m(p.$dev)}</td><td>${m(p.$que)}</td>
       <td><b>${m(p.$caja)}</b></td>
-      <td>${difCls?`<span class="pill ${difCls}">${m(p.$dif)}</span>`:m(p.$dif)}</td></tr>`;
+      <td>${abierto ? '<span class="muted">al cierre</span>' : difCls?`<span class="pill ${difCls}">${m(p.$dif)}</span>`:m(p.$dif)}</td></tr>`;
   }).join("") : `<tr><td colspan="8" class="vacio">Sin movimientos este día</td></tr>`;
-  $("fDin").innerHTML = `<tr><td>Total</td><td></td><td>${m(T.env)}</td><td>${m(T.ven)}</td><td>${m(T.dev)}</td><td>${m(T.que)}</td><td>${m(T.caja)}</td><td>${m(dif)}</td></tr>`;
+  $("fDin").innerHTML = `<tr><td>Total</td><td></td><td>${m(T.env)}</td><td>${m(T.ven)}</td><td>${m(T.dev)}</td><td>${m(T.que)}</td><td>${m(T.caja)}</td><td>${abierto?"—":m(dif)}</td></tr>`;
 
   // ENVIADOS
   const envF = filas.filter(p=>p.envN>0);
