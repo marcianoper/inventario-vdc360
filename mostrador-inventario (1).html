@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventario Mostrador · VDC 360°</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e5e7eb;
+    --brand:#9b1c1c; --ok:#15803d; --okbg:#dcfce7; --warn:#b45309; --warnbg:#fef3c7;
+    --bad:#b91c1c; --badbg:#fee2e2; --info:#1d4ed8; --infobg:#dbeafe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--brand);color:#fff;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  header h1{font-size:20px;margin:0}
+  header .ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  header input,header button{font:inherit;padding:7px 10px;border-radius:8px;border:0}
+  header button{background:#fff;color:var(--brand);font-weight:600;cursor:pointer}
+  .upd{font-size:12px;opacity:.85}
+  main{max-width:1200px;margin:0 auto;padding:16px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{background:var(--card);border-radius:12px;padding:12px 14px;border:1px solid var(--line)}
+  .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .kpi .v{font-size:26px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:12px;color:var(--muted)}
+  .alerta{background:var(--warnbg);color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:14px;display:none}
+  .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .tab{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:600;font-size:14px}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .panel.on{display:block}
+  .panel h2{font-size:16px;margin:0;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .panel .nota{font-size:13px;color:var(--muted);padding:8px 14px 0}
+  .wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  th{background:#fafafa;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0}
+  th:first-child,td:first-child{text-align:left}
+  tfoot td{font-weight:700;background:#fafafa}
+  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
+  .p-ok{background:var(--okbg);color:var(--ok)} .p-warn{background:var(--warnbg);color:var(--warn)}
+  .p-bad{background:var(--badbg);color:var(--bad)} .p-info{background:var(--infobg);color:var(--info)}
+  .bar{height:8px;background:#eee;border-radius:99px;min-width:90px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--ok)}
+  .muted{color:var(--muted)}
+  .vacio{padding:24px;text-align:center;color:var(--muted)}
+  .sub{font-size:12px;color:var(--muted)}
+  @media (max-width:600px){ .kpi .v{font-size:22px} th,td{padding:8px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Inventario Mostrador</h1>
+  <div class="ctrl">
+    <input type="date" id="fecha">
+    <label class="upd">Cierre <input type="time" id="cierre" style="width:105px"></label>
+    <button id="btnRec">Actualizar</button>
+    <span class="upd" id="upd">—</span>
+  </div>
+</header>
+
+<main>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Enviado</div><div class="v" id="kEnv">0</div><div class="s">kg a Mostrador</div></div>
+    <div class="kpi"><div class="l">Vendido</div><div class="v" id="kVen">0</div><div class="s" id="kTk">0 tickets</div></div>
+    <div class="kpi"><div class="l">Devuelto</div><div class="v" id="kDev">0</div><div class="s">kg ya regresados</div></div>
+    <div class="kpi"><div class="l">En Mostrador</div><div class="v" id="kQue">0</div><div class="s">kg que les quedan</div></div>
+    <div class="kpi"><div class="l">Regresarán</div><div class="v" id="kPro">0</div><div class="s">kg estimados al cierre</div></div>
+  </div>
+
+  <div class="alerta" id="alerta"></div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="inv">Inventario Mostrador</button>
+    <button class="tab" data-t="env">Enviados</button>
+    <button class="tab" data-t="dev">Devoluciones previstas</button>
+  </div>
+
+  <!-- INVENTARIO -->
+  <section class="panel on" id="p-inv">
+    <h2>Lo que le queda a Mostrador</h2>
+    <p class="nota">Queda = Enviado − Vendido (tickets escaneados) − Devuelto.</p>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Enviado</th><th>Vendido</th><th>Devuelto</th><th>Queda</th><th>% vendido</th><th>Estado</th></tr></thead>
+      <tbody id="tInv"></tbody><tfoot id="fInv"></tfoot>
+    </table></div>
+  </section>
+
+  <!-- ENVIADOS -->
+  <section class="panel" id="p-env">
+    <h2>Kilos enviados a Mostrador por producto</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Envíos</th><th>Kg</th><th>Piezas</th><th>Último envío</th></tr></thead>
+      <tbody id="tEnv"></tbody><tfoot id="fEnv"></tfoot>
+    </table></div>
+    <h2 style="border-top:1px solid var(--line)">Detalle de cada envío</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Hora</th><th>Producto</th><th>Kg</th><th>Piezas</th><th>Origen</th><th>Congelado</th></tr></thead>
+      <tbody id="tEnvDet"></tbody>
+    </table></div>
+  </section>
+
+  <!-- DEVOLUCIONES -->
+  <section class="panel" id="p-dev">
+    <h2>Cuánto te van a regresar</h2>
+    <p class="nota">Se proyecta con el ritmo de venta de las últimas 2 horas hasta la hora de cierre. Después del cierre, lo que queda es lo que debe regresar.</p>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Queda ahora</th><th>Ritmo (kg/h)</th><th>Venta esperada al cierre</th><th>Regresarán</th><th>Ya devuelto</th><th>Se acaba aprox.</th></tr></thead>
+      <tbody id="tDev"></tbody><tfoot id="fDev"></tfoot>
+    </table></div>
+  </section>
+</main>
+
+<script>
+const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const TZ = "America/Mexico_City";
+const AGOTADO_KG = 0.5;      // menos de esto = se terminó
+const BAJO_PCT = 0.15;       // menos del 15% de lo enviado = poco
+const VENTANA_RITMO_H = 2;   // horas para medir el ritmo de venta
+const REINICIO_MIN = 10;     // minutos después del cierre en que la pantalla se reinicia a 0
+
+const $ = id => document.getElementById(id);
+const f1 = n => (Math.round(n*10)/10).toLocaleString("es-MX",{minimumFractionDigits:1,maximumFractionDigits:1});
+const f0 = n => Math.round(n).toLocaleString("es-MX");
+const nombreBonito = sku => sku.toLowerCase().split("_").map(w=>w[0].toUpperCase()+w.slice(1)).join(" ");
+const hora = iso => new Date(iso).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+
+function hoyMX(){
+  return new Intl.DateTimeFormat("en-CA",{timeZone:TZ}).format(new Date());
+}
+function cierreDefault(fecha){
+  const d = new Date(fecha+"T12:00:00");
+  return d.getDay()===6 ? "15:00" : "16:00";   // sábado cierra más temprano
+}
+// Date en hora de México para fecha + HH:MM
+function fechaHoraMX(fecha, hhmm){
+  return new Date(`${fecha}T${hhmm}:00-06:00`);
+}
+
+function sumarDias(fecha, n){
+  const d = new Date(fecha+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function horaReinicio(fecha){
+  const [h,m] = cierreDefault(fecha).split(":").map(Number);
+  const t = h*60 + m + REINICIO_MIN;
+  return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
+}
+// Día que se muestra en pantalla: después de la hora de reinicio pasa al siguiente día hábil (domingo no se trabaja)
+function hoyOperativo(){
+  let f = hoyMX();
+  if(new Date() >= fechaHoraMX(f, horaReinicio(f))){
+    f = sumarDias(f,1);
+    if(new Date(f+"T12:00:00Z").getUTCDay()===0) f = sumarDias(f,1);
+  }
+  return f;
+}
+let siguiendoHoy = true;   // true = la pantalla sigue el día actual y se reinicia sola
+
+$("fecha").value = hoyOperativo();
+$("cierre").value = cierreDefault($("fecha").value);
+$("fecha").addEventListener("change",()=>{
+  siguiendoHoy = $("fecha").value === hoyOperativo();
+  $("cierre").value = cierreDefault($("fecha").value); cargar();
+});
+$("cierre").addEventListener("change",cargar);
+$("btnRec").addEventListener("click",cargar);
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id==="p-"+b.dataset.t));
+}));
+
+async function cargar(){
+  const fecha = $("fecha").value;
+  $("upd").textContent = "Cargando…";
+  const { data, error } = await sb.rpc("mostrador_dia",{ p_fecha: fecha });
+  if(error){ $("upd").textContent = "Error: "+error.message; return; }
+  pintar(data, fecha);
+  $("upd").textContent = "Actualizado "+new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+}
+
+function pintar(d, fecha){
+  const P = {};   // por SKU
+  const get = sku => P[sku] ??= {sku, env:0, envPz:0, envN:0, ultEnv:null, ven:0, venReciente:0, dev:0};
+  const ahora = new Date();
+  const cierre = fechaHoraMX(fecha, $("cierre").value || "16:00");
+  const esHoy = fecha === hoyMX();
+  const desdeRitmo = new Date(ahora.getTime() - VENTANA_RITMO_H*3600e3);
+
+  d.envios.forEach(e=>{ const p=get(e.sku); p.env+=+e.kg; p.envPz+=+e.pz; p.envN++; p.ultEnv=e.hora; });
+  const tickets = new Set();
+  d.ventas.forEach(v=>{
+    const p=get(v.sku); p.ven+=+v.kg; tickets.add(v.venta);
+    if(new Date(v.hora) >= desdeRitmo) p.venReciente += +v.kg;
+  });
+  d.devueltos.forEach(x=>{ get(x.sku).dev += +x.kg; });
+
+  const filas = Object.values(P).sort((a,b)=>b.env-a.env || b.ven-a.ven);
+  const abierto = esHoy && ahora < cierre;
+  const horasRestantes = abierto ? (cierre-ahora)/3600e3 : 0;
+
+  let T = {env:0, ven:0, dev:0, que:0, pro:0};
+  const raros = [];
+  filas.forEach(p=>{
+    p.que = p.env - p.ven - p.dev;
+    p.ritmo = abierto ? p.venReciente / VENTANA_RITMO_H : 0;
+    p.ventaEsperada = Math.min(Math.max(p.que,0), p.ritmo*horasRestantes);
+    p.regresan = Math.max(p.que - p.ventaEsperada, 0);
+    p.seAcaba = (abierto && p.ritmo>0 && p.que>AGOTADO_KG && p.que/p.ritmo < horasRestantes)
+      ? new Date(ahora.getTime() + p.que/p.ritmo*3600e3) : null;
+    if(p.que < -AGOTADO_KG) raros.push(p);
+    T.env+=p.env; T.ven+=p.ven; T.dev+=p.dev; T.que+=Math.max(p.que,0); T.pro+=p.regresan;
+  });
+
+  // KPIs
+  $("kEnv").textContent=f0(T.env); $("kVen").textContent=f0(T.ven);
+  $("kTk").textContent=tickets.size+" tickets escaneados";
+  $("kDev").textContent=f0(T.dev); $("kQue").textContent=f0(T.que); $("kPro").textContent=f0(T.pro);
+
+  // Alertas
+  const msgs = [];
+  if(siguiendoHoy && fecha !== hoyMX()){
+    const ayer = hoyMX();
+    msgs.push(`🔄 Día nuevo: la pantalla se reinició a las ${horaReinicio(ayer)}. Para ver cómo cerró hoy (${ayer}) cambia la fecha arriba.`);
+  }
+  if(T.env>0 && T.ven/T.env < 0.4 && (!esHoy || ahora > fechaHoraMX(fecha,"12:00")))
+    msgs.push(`⚠️ Solo se han escaneado ${f0(T.ven)} kg de ${f0(T.env)} kg enviados (${Math.round(T.ven/T.env*100)}%). Si no se escanean <b>todos</b> los tickets, el inventario y las devoluciones salen altos.`);
+  if(raros.length)
+    msgs.push(`⚠️ Se vendió más de lo enviado en: ${raros.map(p=>`<b>${nombreBonito(p.sku)}</b> (${f1(-p.que)} kg de más)`).join(", ")}. Revisa si falta capturar un envío o si traían sobrante de ayer.`);
+  $("alerta").innerHTML = msgs.join("<br>");
+  $("alerta").style.display = msgs.length ? "block" : "none";
+
+  // INVENTARIO
+  $("tInv").innerHTML = filas.length ? filas.map(p=>{
+    const pct = p.env>0 ? Math.min(p.ven/p.env,1) : 0;
+    let est;
+    if(p.que < -AGOTADO_KG) est = `<span class="pill p-info">Vendió de más</span>`;
+    else if(p.que <= AGOTADO_KG) est = `<span class="pill p-bad">Se terminó</span>`;
+    else if(p.env>0 && p.que/p.env < BAJO_PCT) est = `<span class="pill p-warn">Poco</span>`;
+    else est = `<span class="pill p-ok">Hay</span>`;
+    return `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${f1(p.env)}</td><td>${f1(p.ven)}</td><td>${f1(p.dev)}</td>
+      <td><b>${f1(p.que)}</b></td>
+      <td><div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><div class="bar"><i style="width:${pct*100}%"></i></div>${Math.round(pct*100)}%</div></td>
+      <td>${est}</td></tr>`;
+  }).join("") : `<tr><td colspan="7" class="vacio">Sin movimientos este día</td></tr>`;
+  $("fInv").innerHTML = `<tr><td>Total</td><td>${f1(T.env)}</td><td>${f1(T.ven)}</td><td>${f1(T.dev)}</td><td>${f1(T.que)}</td><td>${T.env?Math.round(T.ven/T.env*100):0}%</td><td></td></tr>`;
+
+  // ENVIADOS
+  const envF = filas.filter(p=>p.envN>0);
+  $("tEnv").innerHTML = envF.length ? envF.map(p=>
+    `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${p.envN}</td><td><b>${f1(p.env)}</b></td><td>${p.envPz||"—"}</td><td>${hora(p.ultEnv)}</td></tr>`
+  ).join("") : `<tr><td colspan="5" class="vacio">No hay envíos este día</td></tr>`;
+  $("fEnv").innerHTML = `<tr><td>Total</td><td>${d.envios.length}</td><td>${f1(T.env)}</td><td>${f0(envF.reduce((s,p)=>s+p.envPz,0))}</td><td></td></tr>`;
+  $("tEnvDet").innerHTML = d.envios.length ? [...d.envios].reverse().map(e=>
+    `<tr><td>${hora(e.hora)}</td><td>${e.producto}</td><td>${f1(+e.kg)}</td><td>${e.pz||"—"}</td><td>${e.origen||""}</td><td>${e.congelado||""}</td></tr>`
+  ).join("") : `<tr><td colspan="6" class="vacio">—</td></tr>`;
+
+  // DEVOLUCIONES PREVISTAS
+  const devF = filas.filter(p=>p.env>0 || p.dev>0);
+  $("tDev").innerHTML = devF.length ? devF.sort((a,b)=>b.regresan-a.regresan).map(p=>
+    `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${f1(Math.max(p.que,0))}</td>
+     <td>${abierto?f1(p.ritmo):"—"}</td><td>${abierto?f1(p.ventaEsperada):"—"}</td>
+     <td><b>${f1(p.regresan)}</b></td><td>${f1(p.dev)}</td>
+     <td>${p.seAcaba?`<span class="pill p-warn">${hora(p.seAcaba.toISOString())}</span>`:(p.que<=AGOTADO_KG?`<span class="pill p-bad">Ya se acabó</span>`:`<span class="muted">No antes del cierre</span>`)}</td></tr>`
+  ).join("") : `<tr><td colspan="7" class="vacio">Sin envíos este día</td></tr>`;
+  $("fDev").innerHTML = `<tr><td>Total</td><td>${f1(T.que)}</td><td></td><td></td><td>${f1(T.pro)}</td><td>${f1(T.dev)}</td><td></td></tr>`;
+}
+
+cargar();
+setInterval(()=>{
+  if(!siguiendoHoy) return;
+  const h = hoyOperativo();
+  if($("fecha").value !== h){            // llegó la hora de reinicio: todo a 0
+    $("fecha").value = h;
+    $("cierre").value = cierreDefault(h);
+  }
+  cargar();
+}, 60000);
+</script>
+</body>
+</html>
