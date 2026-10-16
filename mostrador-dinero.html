@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dinero Mostrador · VDC 360°</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e5e7eb;
+    --brand:#14532d; --ok:#15803d; --okbg:#dcfce7; --warn:#b45309; --warnbg:#fef3c7;
+    --bad:#b91c1c; --badbg:#fee2e2; --info:#1d4ed8; --infobg:#dbeafe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--brand);color:#fff;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  header h1{font-size:20px;margin:0}
+  header .ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  header input,header button{font:inherit;padding:7px 10px;border-radius:8px;border:0}
+  header button{background:#fff;color:var(--brand);font-weight:600;cursor:pointer}
+  .upd{font-size:12px;opacity:.85}
+  main{max-width:1200px;margin:0 auto;padding:16px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{background:var(--card);border-radius:12px;padding:12px 14px;border:1px solid var(--line)}
+  .kpi.main{border:2px solid var(--brand)}
+  .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .kpi .v{font-size:24px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:12px;color:var(--muted)}
+  .kpi .v.neg{color:var(--bad)} .kpi .v.pos{color:var(--ok)}
+  .alerta{background:var(--warnbg);color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:14px;display:none;line-height:1.5}
+  .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .tab{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:600;font-size:14px}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .panel.on{display:block}
+  .panel h2{font-size:16px;margin:0;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .panel .nota{font-size:13px;color:var(--muted);padding:8px 14px 0;margin:0 0 8px}
+  .wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  th{background:#fafafa;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0}
+  th:first-child,td:first-child{text-align:left}
+  tfoot td{font-weight:700;background:#fafafa}
+  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
+  .p-ok{background:var(--okbg);color:var(--ok)} .p-warn{background:var(--warnbg);color:var(--warn)}
+  .p-bad{background:var(--badbg);color:var(--bad)} .p-info{background:var(--infobg);color:var(--info)}
+  .muted{color:var(--muted)}
+  .vacio{padding:24px;text-align:center;color:var(--muted)}
+  .sinprecio{color:var(--bad);font-weight:700}
+  .precios-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:#fafafa}
+  .precios-bar input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+  .precios-bar button,.btn{font:inherit;padding:8px 14px;border-radius:8px;border:0;background:var(--brand);color:#fff;font-weight:600;cursor:pointer}
+  .btn-gris{background:#374151}
+  td input.precio{width:110px;text-align:right;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+  td input.precio.cambio{border-color:var(--warn);background:var(--warnbg)}
+  @media (max-width:600px){ .kpi .v{font-size:20px} th,td{padding:8px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dinero Mostrador</h1>
+  <div class="ctrl">
+    <input type="date" id="fecha">
+    <label class="upd">Cierre <input type="time" id="cierre" style="width:105px"></label>
+    <button id="btnRec">Actualizar</button>
+    <span class="upd" id="upd">—</span>
+  </div>
+</header>
+
+<main>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Mercancía enviada</div><div class="v" id="kEnv">$0</div><div class="s">valor de lo que salió a Mostrador</div></div>
+    <div class="kpi"><div class="l">Vendido (tickets)</div><div class="v" id="kVen">$0</div><div class="s" id="kTk">0 tickets escaneados</div></div>
+    <div class="kpi"><div class="l">Queda en Mostrador</div><div class="v" id="kQue">$0</div><div class="s">valor del producto que les queda</div></div>
+    <div class="kpi main"><div class="l">Debe haber en caja</div><div class="v" id="kCaja">$0</div><div class="s" id="kCajaS">al cierre del día</div></div>
+    <div class="kpi"><div class="l">Diferencia</div><div class="v" id="kDif">$0</div><div class="s" id="kDifS">caja vs tickets</div></div>
+  </div>
+
+  <div class="alerta" id="alerta"></div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="din">Dinero por producto</button>
+    <button class="tab" data-t="env">Enviados</button>
+    <button class="tab" data-t="dev">Devoluciones previstas</button>
+    <button class="tab" data-t="pre">Precios</button>
+  </div>
+
+  <!-- DINERO POR PRODUCTO -->
+  <section class="panel on" id="p-din">
+    <h2>Dinero por producto</h2>
+    <p class="nota">Debe haber = (Enviado − Devuelto) × precio. Es lo que tiene que existir en caja, se haya escaneado o no el ticket.</p>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Precio/kg</th><th>Enviado</th><th>Vendido (tickets)</th><th>Devuelto</th><th>Queda</th><th>Debe haber</th><th>Diferencia</th></tr></thead>
+      <tbody id="tDin"></tbody><tfoot id="fDin"></tfoot>
+    </table></div>
+  </section>
+
+  <!-- ENVIADOS -->
+  <section class="panel" id="p-env">
+    <h2>Valor enviado a Mostrador por producto</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Envíos</th><th>Kg</th><th>Precio/kg</th><th>Valor</th><th>Último envío</th></tr></thead>
+      <tbody id="tEnv"></tbody><tfoot id="fEnv"></tfoot>
+    </table></div>
+    <h2 style="border-top:1px solid var(--line)">Detalle de cada envío</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Hora</th><th>Producto</th><th>Kg</th><th>Valor</th><th>Origen</th><th>Congelado</th></tr></thead>
+      <tbody id="tEnvDet"></tbody>
+    </table></div>
+  </section>
+
+  <!-- DEVOLUCIONES -->
+  <section class="panel" id="p-dev">
+    <h2>Cuánto dinero en producto te van a regresar</h2>
+    <p class="nota">Se proyecta con el ritmo de venta de las últimas 2 horas hasta la hora de cierre. Lo que no se regresa tiene que estar en caja.</p>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Queda ahora</th><th>Venta esperada al cierre</th><th>Regresarán (kg)</th><th>Regresarán ($)</th><th>Ya devuelto ($)</th></tr></thead>
+      <tbody id="tDev"></tbody><tfoot id="fDev"></tfoot>
+    </table></div>
+  </section>
+
+  <!-- PRECIOS -->
+  <section class="panel" id="p-pre">
+    <h2>Precios de Mostrador por kilo</h2>
+    <p class="nota">Cambia el precio y presiona Guardar. El precio nuevo cuenta desde ese momento; los días anteriores se quedan con el precio que tenían.</p>
+    <div class="precios-bar">
+      <input type="password" id="pin" placeholder="PIN" inputmode="numeric" style="width:120px">
+      <button id="btnGuardar">Guardar precios</button>
+      <button class="btn-gris" id="btnPin" type="button">Cambiar PIN</button>
+      <span class="upd" id="preMsg" style="color:var(--muted)"></span>
+    </div>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Precio actual</th><th>Precio nuevo</th><th>Desde</th></tr></thead>
+      <tbody id="tPre"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script>
+const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const TZ = "America/Mexico_City";
+const AGOTADO_KG = 0.5;      // menos de esto = se terminó
+const VENTANA_RITMO_H = 2;   // horas para medir el ritmo de venta
+const REINICIO_MIN = 10;     // minutos después del cierre en que la pantalla se reinicia a 0
+const TOLERANCIA = 50;       // pesos de diferencia que se consideran normales (redondeos de báscula)
+const KG_CAJA = 27.22;       // kilos por caja completa de menudo
+const PRODUCTOS_CAJA = new Set(["CAJA_MENUDO_NATIONAL","MENUDO_CANADIAN","CAJA_EXCEL","CAJA_WASHINGTON","CAJA_MENUDO_VISCERAS"]);
+
+const $ = id => document.getElementById(id);
+const f2 = n => (Math.round(n*100)/100).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+const m = n => (n<0?"-$":"$") + Math.abs(Math.round(n*100)/100).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+const nombreBonito = sku => sku.toLowerCase().split("_").map(w=>w[0].toUpperCase()+w.slice(1)).join(" ");
+const hora = iso => new Date(iso).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+
+function hoyMX(){ return new Intl.DateTimeFormat("en-CA",{timeZone:TZ}).format(new Date()); }
+function cierreDefault(fecha){ return new Date(fecha+"T12:00:00").getDay()===6 ? "15:00" : "16:00"; }
+function fechaHoraMX(fecha, hhmm){ return new Date(`${fecha}T${hhmm}:00-06:00`); }
+function sumarDias(fecha, n){
+  const d = new Date(fecha+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function horaReinicio(fecha){
+  const [h,mm] = cierreDefault(fecha).split(":").map(Number);
+  const t = h*60 + mm + REINICIO_MIN;
+  return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
+}
+// Después de la hora de reinicio la pantalla pasa al siguiente día hábil (domingo no se trabaja)
+function hoyOperativo(){
+  let f = hoyMX();
+  if(new Date() >= fechaHoraMX(f, horaReinicio(f))){
+    f = sumarDias(f,1);
+    if(new Date(f+"T12:00:00Z").getUTCDay()===0) f = sumarDias(f,1);
+  }
+  return f;
+}
+let siguiendoHoy = true;
+
+$("fecha").value = hoyOperativo();
+$("cierre").value = cierreDefault($("fecha").value);
+$("fecha").addEventListener("change",()=>{
+  siguiendoHoy = $("fecha").value === hoyOperativo();
+  $("cierre").value = cierreDefault($("fecha").value); cargar();
+});
+$("cierre").addEventListener("change",cargar);
+$("btnRec").addEventListener("click",cargar);
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id==="p-"+b.dataset.t));
+  if(b.dataset.t==="pre") cargarPrecios();
+}));
+
+async function cargar(){
+  const fecha = $("fecha").value;
+  $("upd").textContent = "Cargando…";
+  const [dia, pre] = await Promise.all([
+    sb.rpc("mostrador_dia",{ p_fecha: fecha }),
+    sb.rpc("mostrador_precios_dia",{ p_fecha: fecha })
+  ]);
+  const err = dia.error || pre.error;
+  if(err){ $("upd").textContent = "Error: "+err.message; return; }
+  pintar(dia.data, pre.data || {}, fecha);
+  $("upd").textContent = "Actualizado "+new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+}
+
+// Precio por kilo de una línea según su forma.
+// Productos en caja tienen dos precios: SKU_CAJA ($ por caja de 27.22 kg) y SKU_KG ($ por kilo).
+// Si falta uno se usa el otro; si faltan los dos, la línea no tiene precio (null).
+function precioKg(precios, sku, forma){
+  const caja = precios[sku+"_CAJA"], kg = precios[sku+"_KG"];
+  if(forma === "caja") return caja != null ? caja/KG_CAJA : (kg != null ? +kg : null);
+  if(forma === "kg")   return kg != null ? +kg : (caja != null ? caja/KG_CAJA : null);
+  return precios[sku] != null ? +precios[sku] : null;
+}
+
+function pintar(d, precios, fecha){
+  const P = {};
+  const get = sku => P[sku] ??= {sku, env:0, envN:0, ultEnv:null, ven:0, venReciente:0, dev:0,
+                                   $env:0, $ven:0, $dev:0, faltaPrecio:false};
+  const ahora = new Date();
+  const cierre = fechaHoraMX(fecha, $("cierre").value || "16:00");
+  const esHoy = fecha === hoyMX();
+  const desdeRitmo = new Date(ahora.getTime() - VENTANA_RITMO_H*3600e3);
+  const valor = (p, linea) => {           // $ de una línea; marca el producto si no tiene precio
+    const pr = precioKg(precios, linea.sku, linea.forma);
+    if(pr == null){ p.faltaPrecio = true; linea.$ = null; return 0; }
+    linea.$ = +linea.kg * pr; return linea.$;
+  };
+
+  d.envios.forEach(e=>{ const p=get(e.sku); p.env+=+e.kg; p.envN++; p.ultEnv=e.hora; p.$env += valor(p,e); });
+  const tickets = new Set();
+  d.ventas.forEach(v=>{
+    const p=get(v.sku); p.ven+=+v.kg; tickets.add(v.venta); p.$ven += valor(p,v);
+    if(new Date(v.hora) >= desdeRitmo) p.venReciente += +v.kg;
+  });
+  d.devueltos.forEach(x=>{ const p=get(x.sku); p.dev += +x.kg; p.$dev += valor(p,x); });
+
+  const abierto = esHoy && ahora < cierre;
+  const horasRestantes = abierto ? (cierre-ahora)/3600e3 : 0;
+  const filas = Object.values(P);
+  const sinPrecio = [];
+  const T = {env:0, ven:0, dev:0, que:0, caja:0, proy:0, regresan:0};
+
+  filas.forEach(p=>{
+    // Precio promedio por kilo de lo enviado (sirve para valorar lo que queda y lo que regresará)
+    p.precio = p.env>0 && !p.faltaPrecio ? p.$env/p.env
+             : precioKg(precios, p.sku, PRODUCTOS_CAJA.has(p.sku) ? "kg" : null);
+    p.tienePrecio = p.precio != null && !p.faltaPrecio;
+    const pr = p.precio ?? 0;
+    if(!p.tienePrecio && (p.env>0 || p.ven>0)) sinPrecio.push(p);
+    p.que = p.env - p.ven - p.dev;
+    p.ritmo = abierto ? p.venReciente / VENTANA_RITMO_H : 0;
+    p.ventaEsperada = Math.min(Math.max(p.que,0), p.ritmo*horasRestantes);
+    p.regresanKg = Math.max(p.que - p.ventaEsperada, 0);
+    p.$que = Math.max(p.que,0)*pr;
+    // Lo que tiene que estar en caja: lo que salió y no regresó.
+    // Mientras el día sigue abierto, lo que aún les queda no cuenta como dinero.
+    p.$caja = p.$env - p.$dev - (abierto ? p.$que : 0);
+    p.$proy = p.$ven + p.ventaEsperada * pr;                  // proyección al cierre
+    p.$regresan = p.regresanKg * pr;
+    p.$dif = p.$caja - p.$ven;
+    T.env+=p.$env; T.ven+=p.$ven; T.dev+=p.$dev; T.que+=p.$que; T.caja+=p.$caja; T.proy+=p.$proy; T.regresan+=p.$regresan;
+  });
+  filas.sort((a,b)=>b.$env-a.$env || b.env-a.env);
+
+  const hayDevoluciones = d.devueltos.length > 0;
+  const cerrado = !abierto;
+
+  // KPIs
+  $("kEnv").textContent = m(T.env);
+  $("kVen").textContent = m(T.ven);
+  $("kTk").textContent = tickets.size+" tickets escaneados";
+  $("kQue").textContent = m(T.que);
+  if(abierto){
+    $("kCaja").textContent = m(T.proy);
+    $("kCajaS").textContent = "proyección al cierre ("+m(T.ven)+" ya vendido)";
+  }else{
+    $("kCaja").textContent = m(T.caja);
+    $("kCajaS").textContent = hayDevoluciones ? "(enviado − devuelto) × precio" : "falta capturar devoluciones";
+  }
+  const dif = T.caja - T.ven;
+  $("kDif").textContent = m(dif);
+  $("kDif").className = "v " + (Math.abs(dif) <= TOLERANCIA ? "pos" : "neg");
+  $("kDifS").textContent = Math.abs(dif) <= TOLERANCIA ? "caja y tickets cuadran" : (dif>0 ? "falta escanear tickets o falta dinero" : "tickets de más vs mercancía");
+
+  // Alertas
+  const msgs = [];
+  if(siguiendoHoy && fecha !== hoyMX())
+    msgs.push(`🔄 Día nuevo: la pantalla se reinició a las ${horaReinicio(hoyMX())}. Para ver cómo cerró hoy (${hoyMX()}) cambia la fecha arriba.`);
+  if(sinPrecio.length)
+    msgs.push(`💲 Sin precio: ${sinPrecio.map(p=>`<b>${nombreBonito(p.sku)}</b>`).join(", ")}. Estos productos cuentan como $0 hasta que les pongas precio en la pestaña <b>Precios</b>.`);
+  if(cerrado && !hayDevoluciones && T.env>0)
+    msgs.push(`⏳ Todavía no hay devoluciones capturadas. "Debe haber en caja" quedará exacto cuando se registre lo que regresó Mostrador.`);
+  $("alerta").innerHTML = msgs.join("<br>");
+  $("alerta").style.display = msgs.length ? "block" : "none";
+
+  // En productos de caja el precio/kg es el promedio (cajas completas + por kilo)
+  const celdaPrecio = p => !p.tienePrecio ? `<span class="sinprecio">Sin precio</span>`
+    : m(+p.precio) + (PRODUCTOS_CAJA.has(p.sku) ? `<div class="muted" style="font-size:11px">promedio</div>` : "");
+
+  // DINERO POR PRODUCTO
+  $("tDin").innerHTML = filas.length ? filas.map(p=>{
+    const difCls = Math.abs(p.$dif) <= TOLERANCIA/5 ? "" : (p.$dif>0 ? "p-warn" : "p-info");
+    return `<tr><td><b>${nombreBonito(p.sku)}</b><div class="muted" style="font-size:12px">${f2(p.env)} kg enviados · ${f2(p.ven)} kg vendidos</div></td>
+      <td>${celdaPrecio(p)}</td><td>${m(p.$env)}</td><td>${m(p.$ven)}</td><td>${m(p.$dev)}</td><td>${m(p.$que)}</td>
+      <td><b>${m(p.$caja)}</b></td>
+      <td>${difCls?`<span class="pill ${difCls}">${m(p.$dif)}</span>`:m(p.$dif)}</td></tr>`;
+  }).join("") : `<tr><td colspan="8" class="vacio">Sin movimientos este día</td></tr>`;
+  $("fDin").innerHTML = `<tr><td>Total</td><td></td><td>${m(T.env)}</td><td>${m(T.ven)}</td><td>${m(T.dev)}</td><td>${m(T.que)}</td><td>${m(T.caja)}</td><td>${m(dif)}</td></tr>`;
+
+  // ENVIADOS
+  const envF = filas.filter(p=>p.envN>0);
+  $("tEnv").innerHTML = envF.length ? envF.map(p=>
+    `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${p.envN}</td><td>${f2(p.env)}</td><td>${celdaPrecio(p)}</td><td><b>${m(p.$env)}</b></td><td>${hora(p.ultEnv)}</td></tr>`
+  ).join("") : `<tr><td colspan="6" class="vacio">No hay envíos este día</td></tr>`;
+  $("fEnv").innerHTML = `<tr><td>Total</td><td>${d.envios.length}</td><td>${f2(envF.reduce((s,p)=>s+p.env,0))}</td><td></td><td>${m(T.env)}</td><td></td></tr>`;
+  $("tEnvDet").innerHTML = d.envios.length ? [...d.envios].reverse().map(e=>{
+    const piezas = e.forma==="caja" && +e.pz>0 ? ` <span class="muted">(${e.pz} cajas)</span>` : "";
+    return `<tr><td>${hora(e.hora)}</td><td>${esc(e.producto)}${piezas}</td><td>${f2(+e.kg)}</td><td>${e.$!=null?m(e.$):'<span class="sinprecio">Sin precio</span>'}</td><td>${esc(e.origen)}</td><td>${esc(e.congelado)}</td></tr>`;
+  }).join("") : `<tr><td colspan="6" class="vacio">—</td></tr>`;
+
+  // DEVOLUCIONES PREVISTAS
+  const devF = filas.filter(p=>p.env>0 || p.dev>0).sort((a,b)=>b.$regresan-a.$regresan);
+  $("tDev").innerHTML = devF.length ? devF.map(p=>
+    `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${f2(Math.max(p.que,0))} kg</td>
+     <td>${abierto?f2(p.ventaEsperada)+" kg":"—"}</td><td>${f2(p.regresanKg)}</td>
+     <td><b>${p.tienePrecio?m(p.$regresan):'<span class="sinprecio">Sin precio</span>'}</b></td><td>${m(p.$dev)}</td></tr>`
+  ).join("") : `<tr><td colspan="6" class="vacio">Sin envíos este día</td></tr>`;
+  $("fDev").innerHTML = `<tr><td>Total</td><td></td><td></td><td>${f2(devF.reduce((s,p)=>s+p.regresanKg,0))}</td><td>${m(T.regresan)}</td><td>${m(T.dev)}</td></tr>`;
+}
+
+// ===== PRECIOS =====
+function etiquetaPrecio(clave){
+  if(clave.endsWith("_CAJA")) return nombreBonito(clave.slice(0,-5)) + ` <span class="muted">— caja completa ($ por caja)</span>`;
+  if(clave.endsWith("_KG"))   return nombreBonito(clave.slice(0,-3)) + ` <span class="muted">— por kilo</span>`;
+  return nombreBonito(clave);
+}
+async function cargarPrecios(){
+  $("preMsg").textContent = "Cargando…";
+  const { data, error } = await sb.rpc("mostrador_precios_actuales");
+  if(error){ $("preMsg").textContent = "Error: "+error.message; return; }
+  $("tPre").innerHTML = data.map(r=>`<tr>
+      <td><b>${etiquetaPrecio(r.sku)}</b></td>
+      <td>${r.precio_kg!=null?m(+r.precio_kg):'<span class="sinprecio">Sin precio</span>'}</td>
+      <td><input class="precio" type="number" min="0" step="0.01" data-sku="${esc(r.sku)}" data-orig="${r.precio_kg ?? ""}" value="${r.precio_kg ?? ""}" placeholder="0.00"></td>
+      <td class="muted">${r.vigente_desde ? new Date(r.vigente_desde).toLocaleString("es-MX",{timeZone:TZ,dateStyle:"short",timeStyle:"short"}) : "—"}</td>
+    </tr>`).join("");
+  document.querySelectorAll("input.precio").forEach(i=>i.addEventListener("input",()=>{
+    i.classList.toggle("cambio", i.value !== "" && Number(i.value) !== Number(i.dataset.orig || NaN));
+  }));
+  $("preMsg").textContent = "";
+}
+
+$("btnGuardar").addEventListener("click", async ()=>{
+  const pin = $("pin").value.trim();
+  if(!pin) return alert("Escribe el PIN para guardar precios.");
+  const cambios = [...document.querySelectorAll("input.precio.cambio")];
+  if(!cambios.length) return alert("No hay precios cambiados.");
+  $("preMsg").textContent = "Guardando…";
+  for(const i of cambios){
+    const { error } = await sb.rpc("mostrador_set_precio",{ p_pin: pin, p_sku: i.dataset.sku, p_precio: Number(i.value) });
+    if(error){ $("preMsg").textContent = ""; return alert("No se guardó "+nombreBonito(i.dataset.sku)+":\n"+error.message); }
+  }
+  $("preMsg").textContent = `✅ ${cambios.length} precio(s) guardado(s)`;
+  await cargarPrecios(); cargar();
+});
+
+$("btnPin").addEventListener("click", async ()=>{
+  const actual = prompt("PIN actual:"); if(!actual) return;
+  const nuevo = prompt("PIN nuevo (mínimo 4):"); if(!nuevo) return;
+  const { error } = await sb.rpc("mostrador_cambiar_pin",{ p_pin_actual: actual, p_pin_nuevo: nuevo });
+  alert(error ? "No se cambió: "+error.message : "✅ PIN cambiado");
+});
+
+cargar();
+setInterval(()=>{
+  if(!siguiendoHoy) return;
+  const h = hoyOperativo();
+  if($("fecha").value !== h){ $("fecha").value = h; $("cierre").value = cierreDefault(h); }
+  cargar();
+}, 60000);
+</script>
+</body>
+</html>
