@@ -124,7 +124,7 @@ const VENTANA_RITMO_H = 2;   // horas para medir el ritmo de venta
 const REINICIO_MIN = 10;     // minutos después del cierre en que la pantalla se reinicia a 0
 
 const $ = id => document.getElementById(id);
-const f1 = n => (Math.round(n*10)/10).toLocaleString("es-MX",{minimumFractionDigits:1,maximumFractionDigits:1});
+const f1 = n => (Math.round(n*100)/100).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});   // 2 decimales, igual que el ticket
 const f0 = n => Math.round(n).toLocaleString("es-MX");
 const nombreBonito = sku => sku.toLowerCase().split("_").map(w=>w[0].toUpperCase()+w.slice(1)).join(" ");
 const hora = iso => new Date(iso).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
@@ -133,8 +133,7 @@ function hoyMX(){
   return new Intl.DateTimeFormat("en-CA",{timeZone:TZ}).format(new Date());
 }
 function cierreDefault(fecha){
-  const d = new Date(fecha+"T12:00:00");
-  return d.getDay()===6 ? "15:00" : "16:00";   // sábado cierra más temprano
+  return "18:00";   // cierre a las 6 pm todos los días (se reinicia a las 6:10 pm)
 }
 // Date en hora de México para fecha + HH:MM
 function fechaHoraMX(fecha, hhmm){
