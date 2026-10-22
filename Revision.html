@@ -77,7 +77,7 @@
   .fila{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid var(--line)}
   .fila.bad{background:var(--badBg);border-color:rgba(220,38,38,.25)}
   .est{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;white-space:nowrap;color:#fff}
-  .est.ok{background:var(--ok)} .est.bad{background:var(--bad)} .est.warn{background:var(--warn)}
+  .est.ok{background:var(--ok)} .est.bad{background:var(--bad)} .est.warn{background:var(--warn)} .est.rep{background:#94a3b8}
   #listaHist{max-height:420px;overflow:auto}
   .fila .h{font-weight:900;font-variant-numeric:tabular-nums}
   .fila .p{font-size:13px;min-width:0}
@@ -129,9 +129,9 @@
 
     <section class="stats">
       <div class="stat"><span id="lMos">Escaneados en Mostrador</span><b id="sMos">0</b></div>
-      <div class="stat ok"><span>Revisados ✔</span><b id="sOk">0</b></div>
-      <div class="stat bad"><span>Faltaron en Mostrador</span><b id="sFalta">0</b></div>
-      <div class="stat warn"><span>Sin revisar en oficina</span><b id="sPend">0</b></div>
+      <div class="stat ok"><span>Cuadrados ✔ (oficina y Mostrador)</span><b id="sOk">0</b></div>
+      <div class="stat bad"><span>Oficina sí, Mostrador todavía no</span><b id="sFalta">0</b></div>
+      <div class="stat warn"><span>Mostrador sí, oficina no</span><b id="sPend">0</b></div>
     </section>
 
     <section class="card">
@@ -140,14 +140,15 @@
     </section>
 
     <section class="card">
-      <h3><span>❌ No se escanearon en Mostrador</span><span class="hint" id="kgFalta"></span></h3>
+      <h3><span>⏳ Oficina los escaneó, Mostrador todavía no</span><span class="hint" id="kgFalta"></span></h3>
+      <div class="hint" style="margin:-4px 0 10px">Se quitan solos cuando Mostrador los escanea. Si al final del día siguen aquí, Mostrador no los registró.</div>
       <div class="lista" id="listaFalta"><div class="vacio">Ninguno 👍</div></div>
     </section>
 
     <section class="card">
       <details id="detPend">
-        <summary>⏳ Escaneados en Mostrador que oficina todavía no revisa (<span id="nPend">0</span>)</summary>
-        <div class="hint" style="margin:8px 0">Al final del día, si aquí queda algo, es un ticket que Mostrador escaneó pero el papel no llegó a oficina.</div>
+        <summary>⚠️ Mostrador los escaneó pero no pasaron por oficina (<span id="nPend">0</span>)</summary>
+        <div class="hint" style="margin:8px 0">Tickets que Mostrador registró y oficina nunca escaneó.</div>
         <div class="lista" id="listaPend"></div>
       </details>
     </section>
@@ -657,8 +658,8 @@
           mostrarRes("ok", "✅", "OK — sí se escaneó en Mostrador", `Mostrador ${data.hora_mostrador} · ${data.cliente}\n` + detalle);
         }
       }else if(data?.code === "FALTA"){
-        beep("bad");
-        mostrarRes("bad", "❌", "NO SE ESCANEÓ EN MOSTRADOR", detalle + "\nQuedó anotado en la lista de faltantes.");
+        beep("ok");
+        mostrarRes("ok", "📝", "Registrado en oficina", detalle + "\nQueda esperando a que Mostrador lo escanee. Se marca solo.");
       }else{
         throw new Error(JSON.stringify(data));
       }
@@ -687,7 +688,20 @@
 
     const ventas = (ven.data || []).filter(v => v.tipo === "mostrador");
     const revs = rev.data || [];
+
+    // Oficina escanea PRIMERO (de ahí salen los tickets) y Mostrador después.
+    // Una revisión que se guardó cuando Mostrador todavía no tenía el ticket se cuadra aquí
+    // con la venta de Mostrador que tenga exactamente los mismos productos y kilos.
+    const firma = items => (items || []).map(i => (i.sku || i.p) + "=" + Number(i.kg).toFixed(2)).sort().join("|");
     const revisadas = new Set(revs.filter(r => r.venta_id).map(r => r.venta_id));
+    for(const r of revs){
+      if(r.venta_id) continue;
+      const f = firma(r.items);
+      const v = ventas.find(v => !revisadas.has(v.id) && firma(v.items) === f);
+      if(v){ r.venta_id = v.id; r.encontrado = true; revisadas.add(v.id); continue; }
+      // escaneado dos veces en oficina: si ya hay otra revisión cuadrada igual, esta sobra
+      if(revs.some(o => o !== r && o.venta_id && firma(o.items) === f && (o.revisado_por || "mostrador") === (r.revisado_por || "mostrador"))) r._repetida = true;
+    }
 
     // contadores en los botones (siempre de los dos)
     for(const c of ["mostrador", "pedidos"]){
@@ -699,7 +713,7 @@
     const c = modo;
     const vMod = c ? ventas.filter(v => canalDeCliente(v.cliente) === c) : ventas;
     const rMod = c ? revs.filter(r => (r.revisado_por || "mostrador") === c) : revs;
-    const faltan = rMod.filter(r => !r.encontrado);
+    const faltan = rMod.filter(r => !r.encontrado && !r._repetida);
     const pend = vMod.filter(v => !revisadas.has(v.id));
 
     $("lMos").textContent = c ? `Escaneados en Mostrador (${c === "pedidos" ? "Pedidos" : "Mostrador"})` : "Escaneados en Mostrador";
@@ -708,14 +722,15 @@
     $("sFalta").textContent = faltan.length;
     $("sPend").textContent = pend.length;
     $("nPend").textContent = pend.length;
-    $("kgFalta").textContent = faltan.length ? `${kgFmt(faltan.reduce((s, r) => s + Number(r.total_kg || 0), 0))} kg sin registrar` : "";
+    $("kgFalta").textContent = faltan.length ? `${kgFmt(faltan.reduce((s, r) => s + Number(r.total_kg || 0), 0))} kg` : "";
 
     // Historial de lo que escaneó oficina hoy (del más nuevo al más viejo)
     const clienteDeVenta = new Map(ventas.map(v => [v.id, v.cliente]));
     $("nHist").textContent = rMod.length ? `${rMod.length} escaneados` : "";
     $("listaHist").innerHTML = rMod.length ? [...rMod].reverse().map(r => {
       let est, cls;
-      if(!r.encontrado){ est = "FALTÓ EN MOSTRADOR"; cls = "bad"; }
+      if(r._repetida){ est = "REPETIDO"; cls = "rep"; }
+      else if(!r.encontrado){ est = "ESPERANDO MOSTRADOR"; cls = "warn"; }
       else{
         const cli = clienteDeVenta.get(r.venta_id) || "—";
         if(canalDeCliente(cli) !== (r.revisado_por || "mostrador")){ est = "OTRO BOTÓN"; cls = "warn"; }
@@ -731,19 +746,19 @@
     }).join("") : `<div class="vacio">Todavía no has escaneado tickets${c ? " en " + MODOS[c].nombre : ""}.</div>`;
 
     $("listaFalta").innerHTML = faltan.length ? [...faltan].reverse().map(r => `
-      <div class="fila bad">
+      <div class="fila">
         <span class="h">${escapeHtml(r.hora.slice(0,5))}</span>
         <span class="p">${escapeHtml(resumenItems(r.items))}</span>
         <span class="k">${kgFmt(r.total_kg)} kg</span>
         <button class="x" title="Quitar (me equivoqué)" data-borrar="${r.id}">✕</button>
-      </div>`).join("") : `<div class="vacio">Ninguno 👍</div>`;
+      </div>`).join("") : `<div class="vacio">Ninguno: todo lo de oficina ya está en Mostrador 👍</div>`;
 
     $("listaPend").innerHTML = pend.length ? pend.map(v => `
       <div class="fila">
         <span class="h">${escapeHtml(v.hora.slice(0,5))}</span>
         <span class="p">${escapeHtml(resumenItems(v.items))}<small>${escapeHtml(v.cliente)}</small></span>
         <span class="k">${kgFmt((v.items || []).reduce((s, i) => s + Number(i.kg || 0), 0))} kg</span><span></span>
-      </div>`).join("") : `<div class="vacio">Todo ya está revisado 👍</div>`;
+      </div>`).join("") : `<div class="vacio">Ninguno 👍</div>`;
 
     $("live").textContent = "Actualizado " + new Date().toLocaleTimeString("es-MX", { timeZone:"America/Mexico_City", hour:"2-digit", minute:"2-digit" });
   }
@@ -751,7 +766,7 @@
   $("listaFalta").addEventListener("click", async e => {
     const id = e.target?.dataset?.borrar;
     if(!id) return;
-    if(!window.confirm("¿Quitar este faltante? Úsalo solo si lo escaneaste por error.")) return;
+    if(!window.confirm("¿Quitar este ticket de la lista? Úsalo solo si lo escaneaste por error.")) return;
     await sb.rpc("borrar_revision_oficina", { p_id: Number(id) });
     await cargarResumen();
     enfocarPistola();
