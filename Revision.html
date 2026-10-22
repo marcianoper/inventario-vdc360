@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>VDC360° — Revisión oficina</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- versión fija: sin versión, una actualización de la librería puede romper la cámara sin aviso -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
     --bg:#f5f7fb; --paper:#fff; --ink:#0b1220; --muted:#64748b; --line:rgba(15,23,42,.10);
@@ -57,8 +55,6 @@
   .hint{font-size:12px;color:var(--muted);font-weight:700;margin-top:6px}
   .btn{font-size:15px;font-weight:900;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#f1f5f9;cursor:pointer}
   .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-  #reader{margin-top:12px;border-radius:16px;overflow:hidden}
-  #reader:empty{display:none}
 
   /* Resultado grande del último escaneo */
   #res{display:none;margin-top:14px;padding:18px;border-radius:20px;border:3px solid var(--line);text-align:center}
@@ -80,6 +76,9 @@
   .lista{display:grid;gap:8px}
   .fila{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid var(--line)}
   .fila.bad{background:var(--badBg);border-color:rgba(220,38,38,.25)}
+  .est{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;white-space:nowrap;color:#fff}
+  .est.ok{background:var(--ok)} .est.bad{background:var(--bad)} .est.warn{background:var(--warn)}
+  #listaHist{max-height:420px;overflow:auto}
   .fila .h{font-weight:900;font-variant-numeric:tabular-nums}
   .fila .p{font-size:13px;min-width:0}
   .fila .p small{display:block;color:var(--muted);font-weight:800}
@@ -125,11 +124,6 @@
       <div class="modoTit"><div class="t">REVISANDO</div><div class="m" id="modoTxt">—</div></div>
       <input id="scanGun" autocomplete="off" placeholder="Escanea aquí el ticket con la pistola…"/>
       <div class="hint">Aquí NO se guardan ventas ni se toca inventario: solo se revisa contra lo que escaneó Mostrador.</div>
-      <div class="row">
-        <button class="btn" id="toggle" type="button">📷 Iniciar cámara</button>
-        <button class="btn" id="switchCam" type="button" style="display:none">🔄 Cambiar cámara</button>
-      </div>
-      <div id="reader"></div>
       <div id="res"></div>
     </section>
 
@@ -138,6 +132,11 @@
       <div class="stat ok"><span>Revisados ✔</span><b id="sOk">0</b></div>
       <div class="stat bad"><span>Faltaron en Mostrador</span><b id="sFalta">0</b></div>
       <div class="stat warn"><span>Sin revisar en oficina</span><b id="sPend">0</b></div>
+    </section>
+
+    <section class="card">
+      <h3><span>🧾 Mi historial de escaneo (hoy)</span><span class="hint" id="nHist"></span></h3>
+      <div class="lista" id="listaHist"><div class="vacio">Todavía no has escaneado tickets.</div></div>
     </section>
 
     <section class="card">
@@ -175,7 +174,6 @@
   const scanGun = $("scanGun");
   let modo = null;
   let busy = false;
-  let scanner = null, running = false, cameras = [], camIndex = 0;
 
   function escapeHtml(s){
     return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
@@ -712,6 +710,26 @@
     $("nPend").textContent = pend.length;
     $("kgFalta").textContent = faltan.length ? `${kgFmt(faltan.reduce((s, r) => s + Number(r.total_kg || 0), 0))} kg sin registrar` : "";
 
+    // Historial de lo que escaneó oficina hoy (del más nuevo al más viejo)
+    const clienteDeVenta = new Map(ventas.map(v => [v.id, v.cliente]));
+    $("nHist").textContent = rMod.length ? `${rMod.length} escaneados` : "";
+    $("listaHist").innerHTML = rMod.length ? [...rMod].reverse().map(r => {
+      let est, cls;
+      if(!r.encontrado){ est = "FALTÓ EN MOSTRADOR"; cls = "bad"; }
+      else{
+        const cli = clienteDeVenta.get(r.venta_id) || "—";
+        if(canalDeCliente(cli) !== (r.revisado_por || "mostrador")){ est = "OTRO BOTÓN"; cls = "warn"; }
+        else{ est = "OK"; cls = "ok"; }
+      }
+      const cli = r.encontrado ? (clienteDeVenta.get(r.venta_id) || "") : "";
+      return `<div class="fila">
+        <span class="h">${escapeHtml(r.hora)}</span>
+        <span class="p">${escapeHtml(resumenItems(r.items))}${cli ? `<small>${escapeHtml(cli)}</small>` : ""}</span>
+        <span class="k">${kgFmt(r.total_kg)} kg</span>
+        <span class="est ${cls}">${est}</span>
+      </div>`;
+    }).join("") : `<div class="vacio">Todavía no has escaneado tickets${c ? " en " + MODOS[c].nombre : ""}.</div>`;
+
     $("listaFalta").innerHTML = faltan.length ? [...faltan].reverse().map(r => `
       <div class="fila bad">
         <span class="h">${escapeHtml(r.hora.slice(0,5))}</span>
@@ -784,45 +802,6 @@
     const v0 = String(scanGun.value || "");
     gunTimer = setTimeout(async () => { const v = String(scanGun.value || "").trim(); if(v) await processGunText(v); },
       pareceCompleto(v0) ? GUN_IDLE_MS : GUN_IDLE_INCOMPLETO_MS);
-  });
-
-  // ===== Cámara (ve el mismo QR muchas veces: se ignora 8 s) =====
-  const vistosCam = new Map();
-  function onCam(txt){
-    const ahora = Date.now();
-    if(ahora - (vistosCam.get(txt) || 0) < 8000) return;
-    vistosCam.set(txt, ahora);
-    if(!busy) handleDecoded(txt);
-  }
-  async function refreshCameras(){
-    try{
-      cameras = await Html5Qrcode.getCameras();
-      if(!Array.isArray(cameras)) cameras = [];
-      $("switchCam").style.display = cameras.length >= 2 ? "" : "none";
-      const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
-      if(idxBack >= 0) camIndex = idxBack;
-    }catch(err){ console.error(err); cameras = []; }
-  }
-  async function startCam(){
-    if(running) return;
-    if(!scanner) scanner = new Html5Qrcode("reader");
-    await refreshCameras();
-    const config = { fps:15, qrbox:(vw, vh) => { const s = Math.min(vw, vh) * 0.78; return { width:Math.floor(s), height:Math.floor(s) }; },
-      disableFlip:true, experimentalFeatures:{ useBarCodeDetectorIfSupported:true } };
-    const constraints = cameras.length ? { deviceId:{ exact: cameras[camIndex].id } } : { facingMode:{ ideal:"environment" } };
-    try{ await scanner.start(constraints, config, onCam); running = true; $("toggle").textContent = "⏹ Detener cámara"; }
-    catch(e){ console.error(e); mostrarRes("bad", "📷", "Cámara", "No pude abrir la cámara. Revisa permisos del navegador."); }
-  }
-  async function stopCam(){
-    if(!running) return;
-    running = false; $("toggle").textContent = "📷 Iniciar cámara";
-    try{ await scanner.stop(); }catch(e){ console.error(e); }
-  }
-  $("toggle").addEventListener("click", () => running ? stopCam() : startCam());
-  $("switchCam").addEventListener("click", async () => {
-    if(cameras.length < 2) return;
-    camIndex = (camIndex + 1) % cameras.length;
-    if(running){ await stopCam(); await startCam(); }
   });
 
   // ===== Inicio =====
