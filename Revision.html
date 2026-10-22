@@ -11,40 +11,66 @@
   :root{
     --bg:#f5f7fb; --paper:#fff; --ink:#0b1220; --muted:#64748b; --line:rgba(15,23,42,.10);
     --ok:#16a34a; --okBg:rgba(34,197,94,.12); --bad:#dc2626; --badBg:rgba(239,68,68,.10);
-    --warn:#d97706; --warnBg:rgba(245,158,11,.14); --ofi:#7c3aed; --shadow:0 18px 50px rgba(2,6,23,.10);
+    --warn:#d97706; --warnBg:rgba(245,158,11,.14);
+    --mos:#16a34a; --mos2:#22c55e; --ped:#2563eb; --ped2:#3b82f6; --ofi:#7c3aed;
+    --shadow:0 18px 50px rgba(2,6,23,.10);
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink);background:linear-gradient(180deg,rgba(124,58,237,.10),var(--bg) 50%)}
-  header{background:linear-gradient(90deg,#6d28d9,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(109,40,217,.25)}
-  .head{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-  .head b{font-size:19px;font-weight:900}
-  .head small{display:block;opacity:.85;font-weight:700;font-size:12px}
-  .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:14px}
-  .card{background:var(--paper);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:16px;min-width:0}
-  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .controls label{font-size:12px;font-weight:900;color:var(--muted)}
-  .controls input,.btn{font-size:16px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#f8fafc;color:var(--ink)}
-  .btn{cursor:pointer;font-weight:800}
-  #quien{min-width:160px}
-  .fechaAviso{font-size:13px;font-weight:900;color:var(--warn)}
+  html,body{height:100%}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink);background:linear-gradient(180deg,rgba(124,58,237,.10),var(--bg) 50%);transition:background .25s}
+  body.modo-mostrador{background:linear-gradient(180deg,rgba(34,197,94,.14),var(--bg) 60%)}
+  body.modo-pedidos{background:linear-gradient(180deg,rgba(59,130,246,.16),var(--bg) 60%)}
 
-  #scanGun{width:100%;font-size:18px;padding:16px;border-radius:16px;border:3px dashed rgba(124,58,237,.35);background:#faf5ff}
-  #scanGun:focus{outline:none;border-style:solid;border-color:var(--ofi)}
+  .app{min-height:100vh;display:grid;grid-template-columns:200px 1fr 200px;gap:16px;padding:16px;max-width:1300px;margin:0 auto}
+
+  .lado{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:0;border-radius:26px;cursor:pointer;
+    color:#fff;font-weight:900;font-size:26px;line-height:1.15;text-align:center;padding:20px 12px;box-shadow:var(--shadow);
+    transition:transform .12s, opacity .2s, filter .2s; -webkit-tap-highlight-color:transparent;position:sticky;top:16px;height:calc(100vh - 32px)}
+  .lado:active{transform:scale(.97)}
+  .lado .ico{font-size:52px}
+  .lado .cnt{font-size:13px;font-weight:800;background:rgba(255,255,255,.22);padding:6px 12px;border-radius:999px}
+  #btnMostrador{background:linear-gradient(180deg,var(--mos2),var(--mos))}
+  #btnPedidos{background:linear-gradient(180deg,var(--ped2),var(--ped))}
+  body.modo-mostrador #btnPedidos, body.modo-pedidos #btnMostrador{opacity:.38;filter:saturate(.5)}
+  body.modo-mostrador #btnMostrador{outline:5px solid #fff;box-shadow:0 0 0 9px rgba(22,163,74,.45), var(--shadow)}
+  body.modo-pedidos #btnPedidos{outline:5px solid #fff;box-shadow:0 0 0 9px rgba(37,99,235,.45), var(--shadow)}
+
+  .centro{display:grid;gap:14px;align-content:start;min-width:0}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:16px;min-width:0}
+
+  .titulo{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .titulo b{font-size:20px} .titulo small{display:block;color:var(--muted);font-weight:700;font-size:12px}
+  .titulo .live{font-size:12px;font-weight:800;color:var(--muted)}
+
+  .elige{min-height:40vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;color:var(--muted)}
+  .elige b{font-size:24px;color:var(--ink)}
+
+  .modoTit .t{font-size:13px;font-weight:900;color:var(--muted);letter-spacing:.4px}
+  .modoTit .m{font-size:28px;font-weight:1000}
+  body.modo-mostrador .modoTit .m{color:var(--mos)}
+  body.modo-pedidos .modoTit .m{color:var(--ped)}
+
+  #scanGun{width:100%;font-size:18px;padding:16px;border-radius:16px;border:3px dashed var(--line);background:#f8fafc;margin-top:12px}
+  #scanGun:focus{outline:none;border-style:solid}
+  body.modo-mostrador #scanGun:focus{border-color:var(--mos)}
+  body.modo-pedidos #scanGun:focus{border-color:var(--ped)}
   .hint{font-size:12px;color:var(--muted);font-weight:700;margin-top:6px}
+  .btn{font-size:15px;font-weight:900;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#f1f5f9;cursor:pointer}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
   #reader{margin-top:12px;border-radius:16px;overflow:hidden}
   #reader:empty{display:none}
 
   /* Resultado grande del último escaneo */
   #res{display:none;margin-top:14px;padding:18px;border-radius:20px;border:3px solid var(--line);text-align:center}
   #res .i{font-size:46px;line-height:1}
-  #res .t{font-size:28px;font-weight:1000;margin-top:6px}
+  #res .t{font-size:26px;font-weight:1000;margin-top:6px}
   #res .d{font-size:15px;margin-top:6px;color:#334155;white-space:pre-wrap}
   #res.ok{background:var(--okBg);border-color:var(--ok)} #res.ok .t{color:var(--ok)}
   #res.bad{background:var(--badBg);border-color:var(--bad)} #res.bad .t{color:var(--bad)}
   #res.warn{background:var(--warnBg);border-color:var(--warn)} #res.warn .t{color:var(--warn)}
 
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:1000px){.stats{grid-template-columns:repeat(2,1fr)}}
   .stat{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow)}
   .stat span{display:block;font-size:12px;color:var(--muted);font-weight:800}
   .stat b{display:block;font-size:28px;margin-top:4px;font-variant-numeric:tabular-nums}
@@ -61,60 +87,76 @@
   .x{border:0;background:transparent;font-size:18px;cursor:pointer;color:var(--muted)}
   .vacio{color:var(--muted);font-size:13px;padding:6px}
   details summary{cursor:pointer;font-weight:900}
-  @media(max-width:640px){ .fila{grid-template-columns:auto 1fr auto} .fila .p{grid-column:1/-1;grid-row:2} }
+
+  /* Celular / tablet vertical: los botones van arriba */
+  @media (max-width:820px){
+    .app{grid-template-columns:1fr 1fr;grid-template-areas:"m p" "c c"}
+    #btnMostrador{grid-area:m} #btnPedidos{grid-area:p} .centro{grid-area:c}
+    .lado{position:static;height:auto;min-height:110px;font-size:20px;flex-direction:row;flex-wrap:wrap}
+    .lado .ico{font-size:34px}
+    .elige{min-height:24vh}
+    .fila{grid-template-columns:auto 1fr auto} .fila .p{grid-column:1/-1;grid-row:2}
+  }
 </style>
 </head>
 <body>
-<header>
-  <div class="head">
-    <div><b>🧾 Revisión en oficina</b><small>Segundo escaneo: confirma que Mostrador escaneó todas las salidas</small></div>
-    <span id="live" style="font-size:12px;font-weight:800;opacity:.9">—</span>
-  </div>
-</header>
+<div class="app">
+  <button class="lado" id="btnMostrador" type="button">
+    <span class="ico">🏪</span><span>Venta<br>Mostrador</span><span class="cnt" id="cntMostrador">0/0 revisados</span>
+  </button>
 
-<div class="wrap">
-  <section class="card">
-    <div class="controls">
-      <label>Tickets del día</label>
-      <input type="date" id="fecha"/>
-      <button class="btn" id="hoy" type="button">Hoy</button>
-      <button class="btn" id="ayer" type="button">Ayer</button>
-      <label>Quién revisa</label>
-      <input id="quien" placeholder="Tu nombre" autocomplete="off"/>
-      <span class="fechaAviso" id="fechaAviso"></span>
-    </div>
-  </section>
+  <main class="centro">
+    <section class="card">
+      <div class="titulo">
+        <div><b>🧾 Revisión en oficina</b><small>Segundo escaneo de hoy: confirma que Mostrador escaneó todas las salidas</small></div>
+        <span class="live" id="live">—</span>
+      </div>
+    </section>
 
-  <section class="card">
-    <input id="scanGun" autocomplete="off" placeholder="Escanea aquí el ticket con la pistola…"/>
-    <div class="hint">Aquí NO se guardan ventas ni se toca inventario: solo se revisa contra lo que escaneó Mostrador.</div>
-    <div class="controls" style="margin-top:12px">
-      <button class="btn" id="toggle" type="button">📷 Iniciar cámara</button>
-      <button class="btn" id="switchCam" type="button" style="display:none">🔄 Cambiar cámara</button>
-    </div>
-    <div id="reader"></div>
-    <div id="res"></div>
-  </section>
+    <section class="card" id="eligeCard">
+      <div class="elige">
+        <span style="font-size:44px">👈 👉</span>
+        <b>Elige Venta Mostrador o Venta Pedidos</b>
+        <span>Después escanea los tickets. Se queda en esa opción hasta que piques la otra.</span>
+      </div>
+    </section>
 
-  <section class="stats">
-    <div class="stat"><span>Escaneados en Mostrador</span><b id="sMos">0</b></div>
-    <div class="stat ok"><span>Revisados ✔</span><b id="sOk">0</b></div>
-    <div class="stat bad"><span>Faltaron en Mostrador</span><b id="sFalta">0</b></div>
-    <div class="stat warn"><span>Sin revisar en oficina</span><b id="sPend">0</b></div>
-  </section>
+    <section class="card" id="scanCard" style="display:none">
+      <div class="modoTit"><div class="t">REVISANDO</div><div class="m" id="modoTxt">—</div></div>
+      <input id="scanGun" autocomplete="off" placeholder="Escanea aquí el ticket con la pistola…"/>
+      <div class="hint">Aquí NO se guardan ventas ni se toca inventario: solo se revisa contra lo que escaneó Mostrador.</div>
+      <div class="row">
+        <button class="btn" id="toggle" type="button">📷 Iniciar cámara</button>
+        <button class="btn" id="switchCam" type="button" style="display:none">🔄 Cambiar cámara</button>
+      </div>
+      <div id="reader"></div>
+      <div id="res"></div>
+    </section>
 
-  <section class="card">
-    <h3><span>❌ No se escanearon en Mostrador</span><span class="hint" id="kgFalta"></span></h3>
-    <div class="lista" id="listaFalta"><div class="vacio">Ninguno 👍</div></div>
-  </section>
+    <section class="stats">
+      <div class="stat"><span id="lMos">Escaneados en Mostrador</span><b id="sMos">0</b></div>
+      <div class="stat ok"><span>Revisados ✔</span><b id="sOk">0</b></div>
+      <div class="stat bad"><span>Faltaron en Mostrador</span><b id="sFalta">0</b></div>
+      <div class="stat warn"><span>Sin revisar en oficina</span><b id="sPend">0</b></div>
+    </section>
 
-  <section class="card">
-    <details id="detPend">
-      <summary>⏳ Escaneados en Mostrador que oficina todavía no revisa (<span id="nPend">0</span>)</summary>
-      <div class="hint" style="margin:8px 0">Al final del día, si aquí queda algo, es un ticket que Mostrador escaneó pero el papel no llegó a oficina.</div>
-      <div class="lista" id="listaPend"></div>
-    </details>
-  </section>
+    <section class="card">
+      <h3><span>❌ No se escanearon en Mostrador</span><span class="hint" id="kgFalta"></span></h3>
+      <div class="lista" id="listaFalta"><div class="vacio">Ninguno 👍</div></div>
+    </section>
+
+    <section class="card">
+      <details id="detPend">
+        <summary>⏳ Escaneados en Mostrador que oficina todavía no revisa (<span id="nPend">0</span>)</summary>
+        <div class="hint" style="margin:8px 0">Al final del día, si aquí queda algo, es un ticket que Mostrador escaneó pero el papel no llegó a oficina.</div>
+        <div class="lista" id="listaPend"></div>
+      </details>
+    </section>
+  </main>
+
+  <button class="lado" id="btnPedidos" type="button">
+    <span class="ico">📦</span><span>Venta<br>Pedidos</span><span class="cnt" id="cntPedidos">0/0 revisados</span>
+  </button>
 </div>
 
 <script>
@@ -122,17 +164,22 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
+  // Pedidos = lo que Mostrador guardó a nombre de "VENTA PEDIDOS" en la página de escaneo rápido.
+  // Todo lo demás de Mostrador (VENTA MOSTRADOR y clientes con nombre) cuenta como Venta Mostrador.
+  const MODOS = { mostrador:{ nombre:"Venta Mostrador" }, pedidos:{ nombre:"Venta Pedidos" } };
+  const MODO_KEY = "vdc_revision_oficina_modo";
+  const canalDeCliente = nombre => nombre === "VENTA PEDIDOS" ? "pedidos" : "mostrador";
+
   const BOX_FULL_KG = 27.22;
   const $ = (id)=>document.getElementById(id);
   const scanGun = $("scanGun");
-  const QUIEN_KEY = "vdc_revision_oficina_quien";
+  let modo = null;
   let busy = false;
   let scanner = null, running = false, cameras = [], camIndex = 0;
 
   function escapeHtml(s){
     return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
   }
-  // los avisos de la lógica copiada se muestran en el cuadro de resultado
   function showOpToast(type, title, details){ mostrarRes(type === "ok" ? "ok" : "bad", type === "ok" ? "ℹ️" : "⚠️", title, details); }
 
   // ===== Lógica de lectura (la misma de Mostrador) =====
@@ -529,7 +576,7 @@
 
 
 
-  // ===== Sonidos (para que oficina no tenga que voltear a la pantalla en cada ticket) =====
+  // ===== Sonidos (para no tener que voltear a la pantalla en cada ticket) =====
   let audioCtx = null;
   function beep(tipo){
     try{
@@ -555,22 +602,22 @@
   const nombreProd = sku => { const t = String(sku || "").replace(/_/g, " ").toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
   const kgFmt = n => Number(n || 0).toLocaleString("es-MX", { minimumFractionDigits:2, maximumFractionDigits:2 });
   const resumenItems = items => (items || []).map(i => `${nombreProd(i.sku || i.p)} ${kgFmt(i.kg)}`).join(", ");
-
   function hoyMXf(){ return new Intl.DateTimeFormat("en-CA",{ timeZone:"America/Mexico_City" }).format(new Date()); }
-  function moverDia(f, d){ const x = new Date(f + "T12:00:00"); x.setDate(x.getDate() + d); return x.toISOString().slice(0,10); }
 
   // ===== Revisar un ticket =====
   async function handleDecoded(decodedText){
     const texto = String(decodedText || "").trim();
     if(!texto) return;
+    if(!modo){ beep("warn"); mostrarResElige(); return; }
     if(busy){
       const limite = Date.now() + 15000;
       while(busy && Date.now() < limite) await sleep(150);
       if(busy) return;
     }
     busy = true;
+    const modoTicket = modo;
     try{
-      const fecha = $("fecha").value;
+      const fecha = hoyMXf();
       const raw = safeParseJson(texto);
       const problema = revisarLectura(texto, raw);
       if(problema){ beep("warn"); mostrarRes("warn", "🔁", "Vuelve a escanear", problema + "\nNo se revisó nada."); return; }
@@ -581,7 +628,8 @@
       const fp = fpParaFecha(payload, fecha);
       const total = calcTotalKgVisual(payload._itemsUi);
       const items = (payload._itemsUi || []).map(i => ({ sku:i.sku, kg:Number(i.kg) }));
-      const args = { p_fecha:fecha, p_fingerprint:fp, p_raw:texto, p_items:items, p_total_kg:Number(total.toFixed(2)), p_quien:$("quien").value || "" };
+      // p_quien guarda el botón que eligió oficina (mostrador / pedidos)
+      const args = { p_fecha:fecha, p_fingerprint:fp, p_raw:texto, p_items:items, p_total_kg:Number(total.toFixed(2)), p_quien:modoTicket };
 
       let { data, error } = await sb.rpc("revisar_ticket_oficina", args);
       if(error) throw new Error(error.message);
@@ -600,8 +648,16 @@
 
       const detalle = `${resumenItems(items)}\nTotal: ${kgFmt(total)} kg`;
       if(data?.code === "OK"){
-        beep("ok");
-        mostrarRes("ok", "✅", "OK — sí se escaneó en Mostrador", `Mostrador ${data.hora_mostrador} · ${data.cliente}\n` + detalle);
+        const canalMos = canalDeCliente(data.cliente);
+        if(canalMos !== modoTicket){
+          // Sí se escaneó, pero Mostrador lo metió en el otro botón
+          beep("warn");
+          mostrarRes("warn", "⚠️", `Se escaneó, pero como ${MODOS[canalMos].nombre.toUpperCase()}`,
+            `Tú lo revisaste como ${MODOS[modoTicket].nombre}.\nMostrador ${data.hora_mostrador} · ${data.cliente}\n` + detalle);
+        }else{
+          beep("ok");
+          mostrarRes("ok", "✅", "OK — sí se escaneó en Mostrador", `Mostrador ${data.hora_mostrador} · ${data.cliente}\n` + detalle);
+        }
       }else if(data?.code === "FALTA"){
         beep("bad");
         mostrarRes("bad", "❌", "NO SE ESCANEÓ EN MOSTRADOR", detalle + "\nQuedó anotado en la lista de faltantes.");
@@ -615,13 +671,16 @@
       mostrarRes("bad", "⚠️", "Error — no se revisó", "Revisa el internet y vuelve a escanear.\n" + (e?.message || ""));
     }finally{
       setTimeout(() => { busy = false; }, 500);
-      setTimeout(() => scanGun.focus(), 80);
+      enfocarPistola();
     }
   }
+  function mostrarResElige(){
+    $("eligeCard").animate?.([{ transform:"scale(1)" },{ transform:"scale(1.03)" },{ transform:"scale(1)" }], { duration:350 });
+  }
 
-  // ===== Resumen del día =====
+  // ===== Resumen de hoy (filtrado por el botón elegido) =====
   async function cargarResumen(){
-    const fecha = $("fecha").value;
+    const fecha = hoyMXf();
     const [ven, rev] = await Promise.all([
       sb.rpc("tickets_escaneados_dia", { p_fecha: fecha }),
       sb.rpc("revision_oficina_dia", { p_fecha: fecha }),
@@ -631,11 +690,23 @@
     const ventas = (ven.data || []).filter(v => v.tipo === "mostrador");
     const revs = rev.data || [];
     const revisadas = new Set(revs.filter(r => r.venta_id).map(r => r.venta_id));
-    const faltan = revs.filter(r => !r.encontrado);
-    const pend = ventas.filter(v => !revisadas.has(v.id));
 
-    $("sMos").textContent = ventas.length;
-    $("sOk").textContent = revs.filter(r => r.encontrado).length;
+    // contadores en los botones (siempre de los dos)
+    for(const c of ["mostrador", "pedidos"]){
+      const vc = ventas.filter(v => canalDeCliente(v.cliente) === c);
+      const ok = vc.filter(v => revisadas.has(v.id)).length;
+      $(c === "mostrador" ? "cntMostrador" : "cntPedidos").textContent = `${ok}/${vc.length} revisados`;
+    }
+
+    const c = modo;
+    const vMod = c ? ventas.filter(v => canalDeCliente(v.cliente) === c) : ventas;
+    const rMod = c ? revs.filter(r => (r.revisado_por || "mostrador") === c) : revs;
+    const faltan = rMod.filter(r => !r.encontrado);
+    const pend = vMod.filter(v => !revisadas.has(v.id));
+
+    $("lMos").textContent = c ? `Escaneados en Mostrador (${c === "pedidos" ? "Pedidos" : "Mostrador"})` : "Escaneados en Mostrador";
+    $("sMos").textContent = vMod.length;
+    $("sOk").textContent = vMod.filter(v => revisadas.has(v.id)).length;
     $("sFalta").textContent = faltan.length;
     $("sPend").textContent = pend.length;
     $("nPend").textContent = pend.length;
@@ -644,7 +715,7 @@
     $("listaFalta").innerHTML = faltan.length ? [...faltan].reverse().map(r => `
       <div class="fila bad">
         <span class="h">${escapeHtml(r.hora.slice(0,5))}</span>
-        <span class="p">${escapeHtml(resumenItems(r.items))}<small>Revisó: ${escapeHtml(r.revisado_por || "—")}</small></span>
+        <span class="p">${escapeHtml(resumenItems(r.items))}</span>
         <span class="k">${kgFmt(r.total_kg)} kg</span>
         <button class="x" title="Quitar (me equivoqué)" data-borrar="${r.id}">✕</button>
       </div>`).join("") : `<div class="vacio">Ninguno 👍</div>`;
@@ -654,7 +725,7 @@
         <span class="h">${escapeHtml(v.hora.slice(0,5))}</span>
         <span class="p">${escapeHtml(resumenItems(v.items))}<small>${escapeHtml(v.cliente)}</small></span>
         <span class="k">${kgFmt((v.items || []).reduce((s, i) => s + Number(i.kg || 0), 0))} kg</span><span></span>
-      </div>`).join("") : `<div class="vacio">Todo lo de Mostrador ya está revisado 👍</div>`;
+      </div>`).join("") : `<div class="vacio">Todo ya está revisado 👍</div>`;
 
     $("live").textContent = "Actualizado " + new Date().toLocaleTimeString("es-MX", { timeZone:"America/Mexico_City", hour:"2-digit", minute:"2-digit" });
   }
@@ -665,22 +736,26 @@
     if(!window.confirm("¿Quitar este faltante? Úsalo solo si lo escaneaste por error.")) return;
     await sb.rpc("borrar_revision_oficina", { p_id: Number(id) });
     await cargarResumen();
-    scanGun.focus();
+    enfocarPistola();
   });
 
-  // ===== Fecha y nombre =====
-  function ponerFecha(f){
-    $("fecha").value = f;
-    $("fechaAviso").textContent = f !== hoyMXf() ? "⚠️ Revisando tickets de OTRO día" : "";
+  // ===== Botones de modo =====
+  function enfocarPistola(){ if(modo) setTimeout(() => { scanGun.focus(); scanGun.select?.(); }, 80); }
+  function ponerModo(m){
+    modo = m;
+    try{ localStorage.setItem(MODO_KEY, m); }catch(_e){}
+    document.body.classList.toggle("modo-mostrador", m === "mostrador");
+    document.body.classList.toggle("modo-pedidos", m === "pedidos");
+    $("eligeCard").style.display = "none";
+    $("scanCard").style.display = "";
+    $("modoTxt").textContent = MODOS[m].nombre.toUpperCase();
+    scanGun.placeholder = `Escanea aquí los tickets de ${MODOS[m].nombre.toUpperCase()}…`;
     $("res").style.display = "none";
     cargarResumen();
-    scanGun.focus();
+    enfocarPistola();
   }
-  $("fecha").addEventListener("change", () => ponerFecha($("fecha").value));
-  $("hoy").addEventListener("click", () => ponerFecha(hoyMXf()));
-  $("ayer").addEventListener("click", () => ponerFecha(moverDia(hoyMXf(), -1)));
-  try{ $("quien").value = localStorage.getItem(QUIEN_KEY) || ""; }catch(_e){}
-  $("quien").addEventListener("change", () => { try{ localStorage.setItem(QUIEN_KEY, $("quien").value.trim()); }catch(_e){} });
+  $("btnMostrador").addEventListener("click", () => ponerModo("mostrador"));
+  $("btnPedidos").addEventListener("click", () => ponerModo("pedidos"));
 
   // ===== Pistola =====
   let gunTimer = null, lastGunValue = "";
@@ -711,7 +786,7 @@
       pareceCompleto(v0) ? GUN_IDLE_MS : GUN_IDLE_INCOMPLETO_MS);
   });
 
-  // ===== Cámara (la cámara ve el mismo QR muchas veces: se ignora 8 s) =====
+  // ===== Cámara (ve el mismo QR muchas veces: se ignora 8 s) =====
   const vistosCam = new Map();
   function onCam(txt){
     const ahora = Date.now();
@@ -751,8 +826,12 @@
   });
 
   // ===== Inicio =====
-  ponerFecha(hoyMXf());
-  setInterval(cargarResumen, 60000);
+  (function init(){
+    let guardado = null;
+    try{ guardado = localStorage.getItem(MODO_KEY); }catch(_e){}
+    if(guardado && MODOS[guardado]) ponerModo(guardado); else cargarResumen();
+    setInterval(cargarResumen, 60000);
+  })();
 </script>
 </body>
 </html>
