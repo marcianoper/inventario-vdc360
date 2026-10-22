@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>VDC360° — Revisión oficina</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- versión fija: sin versión, una actualización de la librería puede romper la cámara sin aviso -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#f5f7fb; --paper:#fff; --ink:#0b1220; --muted:#64748b; --line:rgba(15,23,42,.10);
+    --ok:#16a34a; --okBg:rgba(34,197,94,.12); --bad:#dc2626; --badBg:rgba(239,68,68,.10);
+    --warn:#d97706; --warnBg:rgba(245,158,11,.14); --ofi:#7c3aed; --shadow:0 18px 50px rgba(2,6,23,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink);background:linear-gradient(180deg,rgba(124,58,237,.10),var(--bg) 50%)}
+  header{background:linear-gradient(90deg,#6d28d9,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(109,40,217,.25)}
+  .head{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .head b{font-size:19px;font-weight:900}
+  .head small{display:block;opacity:.85;font-weight:700;font-size:12px}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:14px}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:16px;min-width:0}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .controls label{font-size:12px;font-weight:900;color:var(--muted)}
+  .controls input,.btn{font-size:16px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#f8fafc;color:var(--ink)}
+  .btn{cursor:pointer;font-weight:800}
+  #quien{min-width:160px}
+  .fechaAviso{font-size:13px;font-weight:900;color:var(--warn)}
+
+  #scanGun{width:100%;font-size:18px;padding:16px;border-radius:16px;border:3px dashed rgba(124,58,237,.35);background:#faf5ff}
+  #scanGun:focus{outline:none;border-style:solid;border-color:var(--ofi)}
+  .hint{font-size:12px;color:var(--muted);font-weight:700;margin-top:6px}
+  #reader{margin-top:12px;border-radius:16px;overflow:hidden}
+  #reader:empty{display:none}
+
+  /* Resultado grande del último escaneo */
+  #res{display:none;margin-top:14px;padding:18px;border-radius:20px;border:3px solid var(--line);text-align:center}
+  #res .i{font-size:46px;line-height:1}
+  #res .t{font-size:28px;font-weight:1000;margin-top:6px}
+  #res .d{font-size:15px;margin-top:6px;color:#334155;white-space:pre-wrap}
+  #res.ok{background:var(--okBg);border-color:var(--ok)} #res.ok .t{color:var(--ok)}
+  #res.bad{background:var(--badBg);border-color:var(--bad)} #res.bad .t{color:var(--bad)}
+  #res.warn{background:var(--warnBg);border-color:var(--warn)} #res.warn .t{color:var(--warn)}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow)}
+  .stat span{display:block;font-size:12px;color:var(--muted);font-weight:800}
+  .stat b{display:block;font-size:28px;margin-top:4px;font-variant-numeric:tabular-nums}
+  .stat.ok b{color:var(--ok)} .stat.bad b{color:var(--bad)} .stat.warn b{color:var(--warn)}
+
+  h3{margin:0 0 10px;font-size:16px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .lista{display:grid;gap:8px}
+  .fila{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid var(--line)}
+  .fila.bad{background:var(--badBg);border-color:rgba(220,38,38,.25)}
+  .fila .h{font-weight:900;font-variant-numeric:tabular-nums}
+  .fila .p{font-size:13px;min-width:0}
+  .fila .p small{display:block;color:var(--muted);font-weight:800}
+  .fila .k{font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .x{border:0;background:transparent;font-size:18px;cursor:pointer;color:var(--muted)}
+  .vacio{color:var(--muted);font-size:13px;padding:6px}
+  details summary{cursor:pointer;font-weight:900}
+  @media(max-width:640px){ .fila{grid-template-columns:auto 1fr auto} .fila .p{grid-column:1/-1;grid-row:2} }
+</style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div><b>🧾 Revisión en oficina</b><small>Segundo escaneo: confirma que Mostrador escaneó todas las salidas</small></div>
+    <span id="live" style="font-size:12px;font-weight:800;opacity:.9">—</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="card">
+    <div class="controls">
+      <label>Tickets del día</label>
+      <input type="date" id="fecha"/>
+      <button class="btn" id="hoy" type="button">Hoy</button>
+      <button class="btn" id="ayer" type="button">Ayer</button>
+      <label>Quién revisa</label>
+      <input id="quien" placeholder="Tu nombre" autocomplete="off"/>
+      <span class="fechaAviso" id="fechaAviso"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <input id="scanGun" autocomplete="off" placeholder="Escanea aquí el ticket con la pistola…"/>
+    <div class="hint">Aquí NO se guardan ventas ni se toca inventario: solo se revisa contra lo que escaneó Mostrador.</div>
+    <div class="controls" style="margin-top:12px">
+      <button class="btn" id="toggle" type="button">📷 Iniciar cámara</button>
+      <button class="btn" id="switchCam" type="button" style="display:none">🔄 Cambiar cámara</button>
+    </div>
+    <div id="reader"></div>
+    <div id="res"></div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><span>Escaneados en Mostrador</span><b id="sMos">0</b></div>
+    <div class="stat ok"><span>Revisados ✔</span><b id="sOk">0</b></div>
+    <div class="stat bad"><span>Faltaron en Mostrador</span><b id="sFalta">0</b></div>
+    <div class="stat warn"><span>Sin revisar en oficina</span><b id="sPend">0</b></div>
+  </section>
+
+  <section class="card">
+    <h3><span>❌ No se escanearon en Mostrador</span><span class="hint" id="kgFalta"></span></h3>
+    <div class="lista" id="listaFalta"><div class="vacio">Ninguno 👍</div></div>
+  </section>
+
+  <section class="card">
+    <details id="detPend">
+      <summary>⏳ Escaneados en Mostrador que oficina todavía no revisa (<span id="nPend">0</span>)</summary>
+      <div class="hint" style="margin:8px 0">Al final del día, si aquí queda algo, es un ticket que Mostrador escaneó pero el papel no llegó a oficina.</div>
+      <div class="lista" id="listaPend"></div>
+    </details>
+  </section>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+
+  const BOX_FULL_KG = 27.22;
+  const $ = (id)=>document.getElementById(id);
+  const scanGun = $("scanGun");
+  const QUIEN_KEY = "vdc_revision_oficina_quien";
+  let busy = false;
+  let scanner = null, running = false, cameras = [], camIndex = 0;
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+  }
+  // los avisos de la lógica copiada se muestran en el cuadro de resultado
+  function showOpToast(type, title, details){ mostrarRes(type === "ok" ? "ok" : "bad", type === "ok" ? "ℹ️" : "⚠️", title, details); }
+
+  // ===== Lógica de lectura (la misma de Mostrador) =====
+  function canonSku(productoOriginal){
+    let t = String(productoOriginal || "")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // limpia basura que a veces trae el texto de la pistola (ej. "CAJA WASHINGTON},{")
+    t = t.replace(/[^A-Z0-9Ñ ]+/g, " ").replace(/\s+/g, " ").trim();
+
+    if(/PATA[\s_-]*MORENA/.test(t)) return "PATA_MORENA";
+    if(/PATA[\s_-]*BLANCA/.test(t)) return "PATA_BLANCA";
+    if(/^CAJA\s+AZUL\b/.test(t) || t.includes("CAJA AZUL")) return "CAJA_MENUDO_NATIONAL";
+    if(/^CAJA\s+CANADIAN\b/.test(t) || t.includes("CAJA CANADIAN")) return "MENUDO_CANADIAN";
+    if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
+    if(t.includes("WASHINGTON")) return "CAJA_WASHINGTON";
+    if(t.includes("EXCEL")) return "CAJA_EXCEL";
+    // Antes TODA cabeza se guardaba como CABEZA_RES (también la de rastro y la sin lengua)
+    if(t.includes("CABEZA") && t.includes("RASTRO")) return "CABEZA_RASTRO";
+    if(t.includes("CABEZA") && /SIN\s*LENGUA/.test(t)) return "CABEZA_SIN_LENGUA";
+    if(t.includes("CABEZA")) return "CABEZA_RES";
+    if(t.includes("TRIPA") && t.includes("RASTRO")) return "TRIPA_RASTRO";
+    if(t.includes("TRIPA") && t.includes("GORDA")) return "TRIPA_GORDA";
+    // Panza Bolsa se descuenta de Panza (antes se ignoraba por la palabra "BOLSA")
+    if(t.includes("PANZA")) return "PANZA";
+    if(t.includes("CANADIAN")) return "MENUDO_CANADIAN";
+    return t.replace(/\s+/g, "_");
+  }
+
+  function applyBoxRules(productoOriginal, qty){
+    const name = String(productoOriginal || "").toUpperCase();
+    const q = Number(qty);
+
+    // En "CAJA ... COMPLETA" la cantidad del ticket es NÚMERO DE CAJAS, no kilos.
+    // Antes solo se convertía cuando era 1 caja; con 2 o más se guardaban como 2, 3, 4… kilos.
+    const isCajaCompleta =
+      name.includes("CAJA") &&
+      name.includes("COMPLETA") &&
+      Number.isFinite(q) && q > 0;
+
+    let kgForInv = Number.isFinite(q) ? q : 0;
+    let kgForTotal = kgForInv;
+
+    if(isCajaCompleta){
+      if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL") || name.includes("WASHINGTON") || name.includes("EXCEL")){
+        kgForInv = Math.round(q * BOX_FULL_KG * 100) / 100;
+        kgForTotal = 0;   // las cajas completas no suman al total de puntos (igual que antes con 1 caja)
+      }
+    }
+    return { kgForInv, kgForTotal };
+  }
+
+  function isIgnorableItem(productoOriginal){
+    const t = String(productoOriginal||"")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // Ojo: antes cualquier producto con la palabra BOLSA se ignoraba, y por eso "PANZA BOLSA" nunca se guardaba.
+    // Ahora solo se ignora la bolsa sola.
+    return (
+      /\bPELLEJO\b/.test(t) ||
+      /^BOLSA(S)?$/.test(t) ||
+      /\bSERVICIO\b/.test(t) ||
+      /\bPROPINA\b/.test(t)
+    );
+  }
+
+  function hashQr(str){
+    let h = 2166136261;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return "QR_" + (h >>> 0).toString(16);
+  }
+
+  function hoyMX(){ return new Intl.DateTimeFormat("en-CA",{ timeZone:"America/Mexico_City" }).format(new Date()); }
+
+  // Huella del ticket. Antes era el texto tal cual, lo que causaba 2 problemas:
+  //  1) el mismo ticket leído con cámara y con pistola daba textos distintos -> se podía guardar 2 veces;
+  //  2) un ticket idéntico a uno de OTRO día (ej. "1 caja completa") quedaba bloqueado para siempre.
+  // Ahora: fecha de hoy + productos/cantidades ya leídos.
+  function ticketFingerprint(payload, n){
+    if(payload._qrId) return "QRID_" + payload._qrId + (n > 1 ? "_N" + n : "");
+    const canon = (payload._lines || []).map(l => {
+      const p = String(l.producto ?? l.p ?? l.sku ?? "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9Ñ ]+/g," ").replace(/\s+/g," ").trim();
+      const c = Number(String(l.cantidad ?? l.c ?? l.kg ?? "").replace(",", "."));
+      return p + "=" + (Number.isFinite(c) ? c.toFixed(3) : "?");
+    }).join(";");
+    const base = hashQr(hoyMX() + "|" + canon).replace("QR_", "QR2_");
+    return n > 1 ? base + "_N" + n : base;
+  }
+
+  function safeParseJson(text){
+    const raw = String(text || "").trim();
+    if(!raw) throw new Error("QR vacío.");
+
+    try{ return JSON.parse(raw); }catch(_e){}
+
+    let s = raw;
+    const parts = s.split(/[\t\r\n]+/).map(x => x.trim()).filter(Boolean);
+    if(parts.length >= 2){
+      const first = parts[0];
+      const allSame = parts.every(x => x === first);
+      if(allSame) s = first;
+    }
+
+    // Pistola con teclado en otro idioma: escribe ´¨[cantidad[Ñ[20.950[,...*+  en lugar de [{"cantidad":"20.950",...}]
+    if(/Ñ/.test(s) && !/:/.test(s)){
+      const fixed = s.replace(/[´¨\[Ñ*+]/g, ch => ({ "´":"[", "¨":"{", "[":'"', "Ñ":":", "*":"}", "+":"]" }[ch]));
+      try{ return JSON.parse(fixed); }catch(_e){}
+    }
+
+    s = s
+      .replace(/´¨/g, '"')
+      .replace(/¨/g, '"')
+      .replace(/´/g, '"')
+      .replace(/Ñ/g, ':')
+      .replace(/ñ/g, ':');
+
+    try{ return JSON.parse(s); }catch(_e){}
+
+    const itemsLong = [];
+    const reLong = /cantidad\W*"?([0-9]+(?:\.[0-9]+)?)"?\W*producto\W*"?(.*?)"?(?=\s*[\]}]|,|\s*$)/gi;
+    let mLong;
+    while((mLong = reLong.exec(s)) !== null){
+      const cantidad = String(mLong[1] || "").trim();
+      let producto = String(mLong[2] || "")
+        .replace(/[\[\]{}]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      producto = producto.replace(/^"+|"+$/g, "").trim();
+      producto = producto.replace(/\bCANTIDAD\b.*$/i, "").trim();
+
+      if(cantidad && producto) itemsLong.push({ cantidad, producto });
+    }
+    if(itemsLong.length) return itemsLong;
+
+    const itemsShort = [];
+    const reShort = /["']?c["']?\s*[:=]\s*["']?([0-9]+(?:\.[0-9]+)?)["']?\s*[,;]\s*["']?p["']?\s*[:=]\s*["']?([^"'}\],]+(?:\s[^"'}\],]+)*)["']?/gi;
+    let mShort;
+    while((mShort = reShort.exec(s)) !== null){
+      const c = String(mShort[1] || "").trim();
+      let p = String(mShort[2] || "")
+        .replace(/[\[\]{}]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      p = p.replace(/^"+|"+$/g, "").trim();
+
+      if(c && p) itemsShort.push({ c, p });
+    }
+    if(itemsShort.length) return itemsShort;
+
+    let t = s.replace(/\*/g, '}').replace(/\+/g, ']');
+
+    try{ return JSON.parse(t); }
+    catch(e){
+      console.error("Texto original pistola:", raw);
+      console.error("Texto saneado:", t);
+      throw new Error("No pude convertir el texto escaneado a datos válidos.");
+    }
+  }
+
+  function normalizePayload(raw, decodedText){
+    const skipped = [];   // líneas que no se pudieron leer (antes se perdían sin avisar)
+    const mapLine = (x) => {
+      const producto = String(x.producto ?? x.p ?? x.sku ?? "").trim();
+      const qty = Number(String(x.cantidad ?? x.c ?? x.kg ?? 0).replace(",", "."));
+
+      if(isIgnorableItem(producto)) return null;
+
+      const sku = canonSku(producto);
+      const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
+
+      if(!sku || !Number.isFinite(kgForInv) || kgForInv <= 0){
+        if(producto) skipped.push(producto);
+        return null;
+      }
+
+      return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
+    };
+    const conSkipped = (res) => { if(res) res._skipped = skipped; return res; };
+
+    if(Array.isArray(raw)){
+      const itemsUi = raw.map(mapLine).filter(Boolean);
+      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+      return conSkipped({ items: itemsForRpc, _itemsUi: itemsUi, _lines: raw });
+    }
+
+    if(raw && typeof raw === "object"){
+      let items = raw.items;
+      if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
+      if(!Array.isArray(items) && Array.isArray(raw.data)) items = raw.data;
+      if(!Array.isArray(items) && (raw.c || raw.cantidad) && (raw.p || raw.producto)) items = [raw];
+
+      const itemsUi = (items || []).map(mapLine).filter(Boolean);
+      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+
+      return conSkipped({ items: itemsForRpc, _itemsUi: itemsUi, _lines: items || [], _qrId: raw.qr_id ? String(raw.qr_id) : "" });
+    }
+
+    return null;
+  }
+
+
+  function calcTotalKgVisual(itemsUi){
+    let sum = 0;
+    for(const it of (itemsUi||[])){
+      const k = Number(it._kgTotal ?? it.kg);
+      if(Number.isFinite(k)) sum += k;
+    }
+    return sum;
+  }
+
+
+  const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+  const vistosRecientes = new Map();   // texto -> última vez que se vio
+  const IGNORAR_REPETIDO_MS = 8000;
+
+  // ===== Protección contra lecturas a medias =====
+  // Antes, si la cámara o la pistola leía el QR cortado o con basura (ej. "10.8{50"),
+  // el sistema rescataba los productos que alcanzaba a leer y los guardaba como OTRO ticket.
+  // Luego llegaba la lectura buena y se guardaba otra vez -> la pata morena salía vendida 2 o 3 veces.
+  // Ahora una lectura incompleta NO se guarda: se pide volver a escanear.
+  // ===== Piezas de pata =====
+  // Si el ticket trae pata blanca o pata morena, el operador TIENE que poner cuántas piezas son
+  // antes de guardar. Las piezas se guardan en ventas_items.piezas.
+  // Una pata pesa ~2 kg (historial de Mostrador). Si lo capturado da un peso por pata muy raro, se pide confirmar.
+  const PATAS = [["PATA_BLANCA","Pata blanca","blanca"],["PATA_MORENA","Pata morena","morena"]];
+  const KG_PATA_MIN = 1.2, KG_PATA_MAX = 3.5;
+
+  function pedirPiezasPatas(itemsUi){
+    const kg = {};
+    for(const it of (itemsUi || [])){
+      if(PATAS.some(([sku]) => sku === it.sku)) kg[it.sku] = (kg[it.sku] || 0) + (Number(it.kg) || 0);
+    }
+    const lista = PATAS.filter(([sku]) => kg[sku] > 0);
+    if(!lista.length) return Promise.resolve({});   // sin patas: no se pregunta nada
+
+    let bg = document.getElementById("pzBg");
+    if(!bg){
+      bg = document.createElement("div");
+      bg.id = "pzBg";
+      document.body.appendChild(bg);
+    }
+    bg.innerHTML = `
+      <div id="pzBox" role="dialog" aria-modal="true">
+        <h3>🦶 ¿Cuántas piezas son?</h3>
+        <div class="sub">Cliente: ${escapeHtml(currentClient?.nombre || "—")} · cuenta las patas que se lleva</div>
+        ${lista.map(([sku, nombre, cls]) => `
+          <label class="pzRow ${cls}">
+            <span><b>${nombre}</b><small>${kg[sku].toFixed(2)} kg</small></span>
+            <input data-sku="${sku}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="pzas"/>
+          </label>`).join("")}
+        <div id="pzMsg"></div>
+        <div class="pzBtns">
+          <button type="button" id="pzCancel">Cancelar</button>
+          <button type="button" class="ok" id="pzOk">Guardar ticket</button>
+        </div>
+      </div>`;
+    bg.style.display = "flex";
+
+    const inputs = [...bg.querySelectorAll("input[data-sku]")];
+    const msg = bg.querySelector("#pzMsg");
+    let avisoMostrado = "";
+    setTimeout(() => inputs[0]?.focus(), 50);
+
+    return new Promise(resolve => {
+      const cerrar = (res) => { bg.style.display = "none"; bg.innerHTML = ""; resolve(res); };
+
+      const intentar = () => {
+        const res = {};
+        const raros = [];
+        for(const inp of inputs){
+          const n = Number(inp.value);
+          if(!/^\d+$/.test(inp.value) || n < 1){
+            msg.className = "bad";
+            msg.textContent = "Pon cuántas piezas de " + (inp.dataset.sku === "PATA_BLANCA" ? "pata blanca" : "pata morena") + " son.";
+            inp.focus(); inp.select();
+            return;
+          }
+          res[inp.dataset.sku] = n;
+          const kgPza = kg[inp.dataset.sku] / n;
+          if(kgPza < KG_PATA_MIN || kgPza > KG_PATA_MAX){
+            raros.push(`${inp.dataset.sku === "PATA_BLANCA" ? "Pata blanca" : "Pata morena"}: ${kg[inp.dataset.sku].toFixed(2)} kg en ${n} pzas = ${kgPza.toFixed(2)} kg por pata`);
+          }
+        }
+        // Si el peso por pata no cuadra, se avisa una vez; si vuelven a presionar Guardar, se acepta.
+        const firma = JSON.stringify(res);
+        if(raros.length && avisoMostrado !== firma){
+          avisoMostrado = firma;
+          msg.className = "";
+          msg.textContent = "⚠️ Revisa, no cuadra (normal ~2 kg por pata):\n" + raros.join("\n") + "\nSi está bien, presiona Guardar otra vez.";
+          return;
+        }
+        cerrar(res);
+      };
+
+      inputs.forEach((inp, k) => {
+        inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D+/g, "").slice(0, 4); msg.textContent = ""; });
+        inp.addEventListener("keydown", e => {
+          if(e.key === "Enter"){
+            e.preventDefault();
+            if(k < inputs.length - 1 && !inputs[k + 1].value) inputs[k + 1].focus();
+            else intentar();
+          }else if(e.key === "Escape"){ cerrar(null); }
+        });
+      });
+      bg.querySelector("#pzOk").addEventListener("click", intentar);
+      bg.querySelector("#pzCancel").addEventListener("click", () => cerrar(null));
+    });
+  }
+
+  // Pone las piezas en la primera línea de cada pata (si el ticket trae 2 líneas de la misma pata,
+  // la segunda queda en 0 para que la suma por día salga bien).
+  function ponerPiezas(items, piezas){
+    const usados = new Set();
+    return (items || []).map(it => {
+      if(!(it.sku in piezas)) return it;
+      const pzas = usados.has(it.sku) ? 0 : piezas[it.sku];
+      usados.add(it.sku);
+      return { ...it, pzas };
+    });
+  }
+
+  function revisarLectura(texto, raw){
+    const t = String(texto || "").trim();
+
+    // 1) Debe empezar y terminar como ticket completo (también con teclado cambiado: ´¨ ... *+)
+    if(!/^[\[{´¨]/.test(t) || !/[\]}+*]$/.test(t)) return "El QR se leyó cortado.";
+
+    // 2) Cuántas líneas trae el ticket
+    let lineas = [], objetosEsperados = 0;
+    if(Array.isArray(raw)){ lineas = raw; objetosEsperados = raw.length; }
+    else if(raw && typeof raw === "object"){
+      const arr = Array.isArray(raw.items) ? raw.items : Array.isArray(raw.productos) ? raw.productos : Array.isArray(raw.data) ? raw.data : null;
+      if(arr){ lineas = arr; objetosEsperados = arr.length + 1; }   // +1 por la llave de afuera
+      else { lineas = [raw]; objetosEsperados = 1; }
+    }
+    if(!lineas.length) return "No se encontraron productos.";
+
+    // 3) Cada producto del texto debe haberse leído (si hay basura en medio, se pierden líneas)
+    const objetosEnTexto = (t.match(/[{¨]/g) || []).length;
+    if(objetosEnTexto !== objetosEsperados) return "El QR traía caracteres dañados.";
+
+    // 4) Cada cantidad debe ser un número limpio
+    for(const l of lineas){
+      const c = String(l?.cantidad ?? l?.c ?? l?.kg ?? "").trim().replace(",", ".");
+      if(!/^\d+(\.\d+)?$/.test(c)) return "Una cantidad venía dañada.";
+    }
+    return "";
+  }
+
+  // ===== Aviso si un ticket se parece a uno guardado hace poco =====
+  // Si comparte un producto con el MISMO peso exacto que un ticket guardado en los últimos 3 minutos,
+  // casi seguro es el mismo ticket leído otra vez.
+  const guardadosRecientes = [];   // { t, lineas:Set("SKU=kg") }
+  const VENTANA_PARECIDO_MS = 3 * 60 * 1000;
+
+  function lineasDe(payload){
+    return new Set((payload.items || []).map(it => it.sku + "=" + Number(it.kg).toFixed(3)));
+  }
+  function pareceRepetido(payload){
+    const ahora = Date.now();
+    while(guardadosRecientes.length && ahora - guardadosRecientes[0].t > VENTANA_PARECIDO_MS) guardadosRecientes.shift();
+    const nuevas = lineasDe(payload);
+    for(const g of guardadosRecientes){
+      const iguales = [...nuevas].filter(x => g.lineas.has(x));
+      if(iguales.length) return iguales;
+    }
+    return null;
+  }
+  function recordarGuardado(payload){
+    guardadosRecientes.push({ t: Date.now(), lineas: lineasDe(payload) });
+  }
+
+
+  // Huella igual a la de Mostrador, pero del día elegido en oficina
+  function fpParaFecha(payload, fecha){ const n = 1;
+    if(payload._qrId) return "QRID_" + payload._qrId + (n > 1 ? "_N" + n : "");
+    const canon = (payload._lines || []).map(l => {
+      const p = String(l.producto ?? l.p ?? l.sku ?? "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9Ñ ]+/g," ").replace(/\s+/g," ").trim();
+      const c = Number(String(l.cantidad ?? l.c ?? l.kg ?? "").replace(",", "."));
+      return p + "=" + (Number.isFinite(c) ? c.toFixed(3) : "?");
+    }).join(";");
+    const base = hashQr(fecha + "|" + canon).replace("QR_", "QR2_");
+    return n > 1 ? base + "_N" + n : base;
+  }
+
+
+
+  // ===== Sonidos (para que oficina no tenga que voltear a la pantalla en cada ticket) =====
+  let audioCtx = null;
+  function beep(tipo){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const notas = tipo === "ok" ? [[880,.09]] : tipo === "warn" ? [[520,.12],[520,.12]] : [[220,.25],[180,.35]];
+      let t = audioCtx.currentTime;
+      for(const [f, d] of notas){
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.frequency.value = f; o.type = tipo === "bad" ? "square" : "sine";
+        g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + d);
+        t += d + .05;
+      }
+    }catch(_e){}
+  }
+
+  function mostrarRes(cls, icono, titulo, detalle){
+    const r = $("res");
+    r.className = cls; r.style.display = "block";
+    r.innerHTML = `<div class="i">${icono}</div><div class="t">${escapeHtml(titulo)}</div><div class="d">${escapeHtml(detalle || "")}</div>`;
+  }
+
+  const nombreProd = sku => { const t = String(sku || "").replace(/_/g, " ").toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const kgFmt = n => Number(n || 0).toLocaleString("es-MX", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const resumenItems = items => (items || []).map(i => `${nombreProd(i.sku || i.p)} ${kgFmt(i.kg)}`).join(", ");
+
+  function hoyMXf(){ return new Intl.DateTimeFormat("en-CA",{ timeZone:"America/Mexico_City" }).format(new Date()); }
+  function moverDia(f, d){ const x = new Date(f + "T12:00:00"); x.setDate(x.getDate() + d); return x.toISOString().slice(0,10); }
+
+  // ===== Revisar un ticket =====
+  async function handleDecoded(decodedText){
+    const texto = String(decodedText || "").trim();
+    if(!texto) return;
+    if(busy){
+      const limite = Date.now() + 15000;
+      while(busy && Date.now() < limite) await sleep(150);
+      if(busy) return;
+    }
+    busy = true;
+    try{
+      const fecha = $("fecha").value;
+      const raw = safeParseJson(texto);
+      const problema = revisarLectura(texto, raw);
+      if(problema){ beep("warn"); mostrarRes("warn", "🔁", "Vuelve a escanear", problema + "\nNo se revisó nada."); return; }
+
+      const payload = normalizePayload(raw, texto);
+      if(!payload?.items?.length){ beep("warn"); mostrarRes("warn", "🔁", "QR inválido", "No pude leer productos."); return; }
+
+      const fp = fpParaFecha(payload, fecha);
+      const total = calcTotalKgVisual(payload._itemsUi);
+      const items = (payload._itemsUi || []).map(i => ({ sku:i.sku, kg:Number(i.kg) }));
+      const args = { p_fecha:fecha, p_fingerprint:fp, p_raw:texto, p_items:items, p_total_kg:Number(total.toFixed(2)), p_quien:$("quien").value || "" };
+
+      let { data, error } = await sb.rpc("revisar_ticket_oficina", args);
+      if(error) throw new Error(error.message);
+
+      if(data?.code === "YA_REVISADO"){
+        beep("warn");
+        const otro = window.confirm(
+          `Este ticket YA lo revisaste a las ${data.hora_revision}.\n\n` +
+          "• Si lo escaneaste otra vez por error: presiona CANCELAR.\n" +
+          "• Si es OTRO ticket con exactamente los mismos productos y kilos: presiona ACEPTAR."
+        );
+        if(!otro){ mostrarRes("warn", "↩️", "Ya estaba revisado", `Revisado a las ${data.hora_revision}. No se contó otra vez.`); return; }
+        ({ data, error } = await sb.rpc("revisar_ticket_oficina", { ...args, p_otro:true }));
+        if(error) throw new Error(error.message);
+      }
+
+      const detalle = `${resumenItems(items)}\nTotal: ${kgFmt(total)} kg`;
+      if(data?.code === "OK"){
+        beep("ok");
+        mostrarRes("ok", "✅", "OK — sí se escaneó en Mostrador", `Mostrador ${data.hora_mostrador} · ${data.cliente}\n` + detalle);
+      }else if(data?.code === "FALTA"){
+        beep("bad");
+        mostrarRes("bad", "❌", "NO SE ESCANEÓ EN MOSTRADOR", detalle + "\nQuedó anotado en la lista de faltantes.");
+      }else{
+        throw new Error(JSON.stringify(data));
+      }
+      await cargarResumen();
+    }catch(e){
+      console.error(e);
+      beep("bad");
+      mostrarRes("bad", "⚠️", "Error — no se revisó", "Revisa el internet y vuelve a escanear.\n" + (e?.message || ""));
+    }finally{
+      setTimeout(() => { busy = false; }, 500);
+      setTimeout(() => scanGun.focus(), 80);
+    }
+  }
+
+  // ===== Resumen del día =====
+  async function cargarResumen(){
+    const fecha = $("fecha").value;
+    const [ven, rev] = await Promise.all([
+      sb.rpc("tickets_escaneados_dia", { p_fecha: fecha }),
+      sb.rpc("revision_oficina_dia", { p_fecha: fecha }),
+    ]);
+    if(ven.error || rev.error){ $("live").textContent = "Error al cargar"; return; }
+
+    const ventas = (ven.data || []).filter(v => v.tipo === "mostrador");
+    const revs = rev.data || [];
+    const revisadas = new Set(revs.filter(r => r.venta_id).map(r => r.venta_id));
+    const faltan = revs.filter(r => !r.encontrado);
+    const pend = ventas.filter(v => !revisadas.has(v.id));
+
+    $("sMos").textContent = ventas.length;
+    $("sOk").textContent = revs.filter(r => r.encontrado).length;
+    $("sFalta").textContent = faltan.length;
+    $("sPend").textContent = pend.length;
+    $("nPend").textContent = pend.length;
+    $("kgFalta").textContent = faltan.length ? `${kgFmt(faltan.reduce((s, r) => s + Number(r.total_kg || 0), 0))} kg sin registrar` : "";
+
+    $("listaFalta").innerHTML = faltan.length ? [...faltan].reverse().map(r => `
+      <div class="fila bad">
+        <span class="h">${escapeHtml(r.hora.slice(0,5))}</span>
+        <span class="p">${escapeHtml(resumenItems(r.items))}<small>Revisó: ${escapeHtml(r.revisado_por || "—")}</small></span>
+        <span class="k">${kgFmt(r.total_kg)} kg</span>
+        <button class="x" title="Quitar (me equivoqué)" data-borrar="${r.id}">✕</button>
+      </div>`).join("") : `<div class="vacio">Ninguno 👍</div>`;
+
+    $("listaPend").innerHTML = pend.length ? pend.map(v => `
+      <div class="fila">
+        <span class="h">${escapeHtml(v.hora.slice(0,5))}</span>
+        <span class="p">${escapeHtml(resumenItems(v.items))}<small>${escapeHtml(v.cliente)}</small></span>
+        <span class="k">${kgFmt((v.items || []).reduce((s, i) => s + Number(i.kg || 0), 0))} kg</span><span></span>
+      </div>`).join("") : `<div class="vacio">Todo lo de Mostrador ya está revisado 👍</div>`;
+
+    $("live").textContent = "Actualizado " + new Date().toLocaleTimeString("es-MX", { timeZone:"America/Mexico_City", hour:"2-digit", minute:"2-digit" });
+  }
+
+  $("listaFalta").addEventListener("click", async e => {
+    const id = e.target?.dataset?.borrar;
+    if(!id) return;
+    if(!window.confirm("¿Quitar este faltante? Úsalo solo si lo escaneaste por error.")) return;
+    await sb.rpc("borrar_revision_oficina", { p_id: Number(id) });
+    await cargarResumen();
+    scanGun.focus();
+  });
+
+  // ===== Fecha y nombre =====
+  function ponerFecha(f){
+    $("fecha").value = f;
+    $("fechaAviso").textContent = f !== hoyMXf() ? "⚠️ Revisando tickets de OTRO día" : "";
+    $("res").style.display = "none";
+    cargarResumen();
+    scanGun.focus();
+  }
+  $("fecha").addEventListener("change", () => ponerFecha($("fecha").value));
+  $("hoy").addEventListener("click", () => ponerFecha(hoyMXf()));
+  $("ayer").addEventListener("click", () => ponerFecha(moverDia(hoyMXf(), -1)));
+  try{ $("quien").value = localStorage.getItem(QUIEN_KEY) || ""; }catch(_e){}
+  $("quien").addEventListener("change", () => { try{ localStorage.setItem(QUIEN_KEY, $("quien").value.trim()); }catch(_e){} });
+
+  // ===== Pistola =====
+  let gunTimer = null, lastGunValue = "";
+  const GUN_IDLE_MS = 400, GUN_IDLE_INCOMPLETO_MS = 1500;
+  function pareceCompleto(t){ return /[\]}+*]\s*$/.test(String(t||"").trim()); }
+  async function processGunText(text){
+    const t = String(text || "").trim();
+    if(!t) return;
+    if(t === lastGunValue){ scanGun.value = ""; return; }
+    lastGunValue = t; scanGun.value = "";
+    await handleDecoded(t);
+    scanGun.value = "";
+    setTimeout(() => { lastGunValue = ""; }, 800);
+    if(gunTimer){ clearTimeout(gunTimer); gunTimer = null; }
+  }
+  scanGun.addEventListener("keydown", async e => {
+    if(e.key === "Enter" || e.key === "Tab"){
+      e.preventDefault();
+      if(gunTimer){ clearTimeout(gunTimer); gunTimer = null; }
+      const v = String(scanGun.value || "").trim();
+      if(v) await processGunText(v);
+    }
+  });
+  scanGun.addEventListener("input", () => {
+    if(gunTimer) clearTimeout(gunTimer);
+    const v0 = String(scanGun.value || "");
+    gunTimer = setTimeout(async () => { const v = String(scanGun.value || "").trim(); if(v) await processGunText(v); },
+      pareceCompleto(v0) ? GUN_IDLE_MS : GUN_IDLE_INCOMPLETO_MS);
+  });
+
+  // ===== Cámara (la cámara ve el mismo QR muchas veces: se ignora 8 s) =====
+  const vistosCam = new Map();
+  function onCam(txt){
+    const ahora = Date.now();
+    if(ahora - (vistosCam.get(txt) || 0) < 8000) return;
+    vistosCam.set(txt, ahora);
+    if(!busy) handleDecoded(txt);
+  }
+  async function refreshCameras(){
+    try{
+      cameras = await Html5Qrcode.getCameras();
+      if(!Array.isArray(cameras)) cameras = [];
+      $("switchCam").style.display = cameras.length >= 2 ? "" : "none";
+      const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
+      if(idxBack >= 0) camIndex = idxBack;
+    }catch(err){ console.error(err); cameras = []; }
+  }
+  async function startCam(){
+    if(running) return;
+    if(!scanner) scanner = new Html5Qrcode("reader");
+    await refreshCameras();
+    const config = { fps:15, qrbox:(vw, vh) => { const s = Math.min(vw, vh) * 0.78; return { width:Math.floor(s), height:Math.floor(s) }; },
+      disableFlip:true, experimentalFeatures:{ useBarCodeDetectorIfSupported:true } };
+    const constraints = cameras.length ? { deviceId:{ exact: cameras[camIndex].id } } : { facingMode:{ ideal:"environment" } };
+    try{ await scanner.start(constraints, config, onCam); running = true; $("toggle").textContent = "⏹ Detener cámara"; }
+    catch(e){ console.error(e); mostrarRes("bad", "📷", "Cámara", "No pude abrir la cámara. Revisa permisos del navegador."); }
+  }
+  async function stopCam(){
+    if(!running) return;
+    running = false; $("toggle").textContent = "📷 Iniciar cámara";
+    try{ await scanner.stop(); }catch(e){ console.error(e); }
+  }
+  $("toggle").addEventListener("click", () => running ? stopCam() : startCam());
+  $("switchCam").addEventListener("click", async () => {
+    if(cameras.length < 2) return;
+    camIndex = (camIndex + 1) % cameras.length;
+    if(running){ await stopCam(); await startCam(); }
+  });
+
+  // ===== Inicio =====
+  ponerFecha(hoyMXf());
+  setInterval(cargarResumen, 60000);
+</script>
+</body>
+</html>
