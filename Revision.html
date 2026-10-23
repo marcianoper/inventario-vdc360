@@ -275,7 +275,36 @@
     return n > 1 ? base + "_N" + n : base;
   }
 
-  function safeParseJson(text){
+  // ===== Mayúsculas activas (Bloq Mayús) =====
+  // Con Bloq Mayús la pistola manda {"C":"24.400","P":"tripa"} en lugar de {"c":"24.400","p":"TRIPA"},
+  // y con el teclado cambiado invierte Ñ/ñ. Antes eso daba "cantidad dañada" o "no pude convertir".
+  // Ahora los nombres de los campos se pasan a minúsculas y la Ñ/ñ se trata igual.
+  function llavesMinusculas(x){
+    if(Array.isArray(x)) return x.map(llavesMinusculas);
+    if(x && typeof x === "object"){
+      const o = {};
+      for(const [k, v] of Object.entries(x)) o[String(k).toLowerCase()] = llavesMinusculas(v);
+      return o;
+    }
+    return x;
+  }
+  function safeParseJson(text){ return llavesMinusculas(safeParseJsonBase(normalizarPistola(text))); }
+
+  // Con Bloq Mayús (o con otra distribución de teclado) la pistola manda:
+  //   ^ en lugar de {     ` en lugar de }     ~ en lugar de ]     y el [ del inicio no llega.
+  // Ej.: ^"c":"3.800","p":"LENGUA"`,^"c":"26.200","p":"HIGADO"`~
+  // Aquí se convierte de vuelta a [{"c":"3.800","p":"LENGUA"},{"c":"26.200","p":"HIGADO"}]
+  function normalizarPistola(t){
+    let s = String(t || "").trim();
+    if(/[\^`~]/.test(s) && !/[{}]/.test(s)){
+      s = s.replace(/\^/g, "{").replace(/`/g, "}").replace(/~/g, "]");
+      if(s.startsWith("{") && s.endsWith("]")) s = "[" + s;
+      if(s.startsWith("[") && s.endsWith("}")) s = s + "]";
+    }
+    return s;
+  }
+
+  function safeParseJsonBase(text){
     const raw = String(text || "").trim();
     if(!raw) throw new Error("QR vacío.");
 
@@ -290,8 +319,8 @@
     }
 
     // Pistola con teclado en otro idioma: escribe ´¨[cantidad[Ñ[20.950[,...*+  en lugar de [{"cantidad":"20.950",...}]
-    if(/Ñ/.test(s) && !/:/.test(s)){
-      const fixed = s.replace(/[´¨\[Ñ*+]/g, ch => ({ "´":"[", "¨":"{", "[":'"', "Ñ":":", "*":"}", "+":"]" }[ch]));
+    if(/[Ññ]/.test(s) && !/:/.test(s)){
+      const fixed = s.replace(/[´¨\[Ññ*+]/g, ch => ({ "´":"[", "¨":"{", "[":'"', "Ñ":":", "ñ":":", "*":"}", "+":"]" }[ch]));
       try{ return JSON.parse(fixed); }catch(_e){}
     }
 
@@ -605,7 +634,7 @@
 
   // ===== Revisar un ticket =====
   async function handleDecoded(decodedText){
-    const texto = String(decodedText || "").trim();
+    const texto = normalizarPistola(String(decodedText || "").trim());
     if(!texto) return;
     if(!modo){ beep("warn"); mostrarResElige(); return; }
     if(busy){
@@ -793,7 +822,7 @@
   // ===== Pistola =====
   let gunTimer = null, lastGunValue = "";
   const GUN_IDLE_MS = 400, GUN_IDLE_INCOMPLETO_MS = 1500;
-  function pareceCompleto(t){ return /[\]}+*]\s*$/.test(String(t||"").trim()); }
+  function pareceCompleto(t){ return /[\]}+*~`]\s*$/.test(String(t||"").trim()); }
   async function processGunText(text){
     const t = String(text || "").trim();
     if(!t) return;
