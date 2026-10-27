@@ -45,6 +45,9 @@
   .bar{height:8px;background:#eee;border-radius:99px;min-width:90px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--ok)}
   .muted{color:var(--muted)}
+  td.ofi{background:#f5f3ff}
+  .dif-w{color:var(--warn);font-weight:700} .dif-b{color:var(--bad);font-weight:700}
+  .difn{display:block;font-size:11px;font-weight:700}
   .vacio{padding:24px;text-align:center;color:var(--muted)}
   .sub{font-size:12px;color:var(--muted)}
   @media (max-width:600px){ .kpi .v{font-size:22px} th,td{padding:8px} }
@@ -64,7 +67,8 @@
 <main>
   <div class="kpis">
     <div class="kpi"><div class="l">Enviado</div><div class="v" id="kEnv">0</div><div class="s">kg a Mostrador</div></div>
-    <div class="kpi"><div class="l">Vendido</div><div class="v" id="kVen">0</div><div class="s" id="kTk">0 tickets</div></div>
+    <div class="kpi"><div class="l">Vendido (Mostrador)</div><div class="v" id="kVen">0</div><div class="s" id="kTk">0 tickets</div></div>
+    <div class="kpi"><div class="l">Vendido (Oficina)</div><div class="v" id="kOfi">0</div><div class="s" id="kOfiTk">0 tickets</div></div>
     <div class="kpi"><div class="l">Devuelto</div><div class="v" id="kDev">0</div><div class="s">kg ya regresados</div></div>
     <div class="kpi"><div class="l">En Mostrador</div><div class="v" id="kQue">0</div><div class="s">kg que les quedan</div></div>
     <div class="kpi"><div class="l">Regresarán</div><div class="v" id="kPro">0</div><div class="s">kg estimados al cierre</div></div>
@@ -81,9 +85,9 @@
   <!-- INVENTARIO -->
   <section class="panel on" id="p-inv">
     <h2>Lo que le queda a Mostrador</h2>
-    <p class="nota">Queda = Enviado − Vendido (tickets escaneados) − Devuelto.</p>
+    <p class="nota">Queda = Enviado − Vendido (Mostrador) − Devuelto. Vendido (Oficina) = tickets que escaneó oficina, para comparar: en naranja si oficina escaneó más, en rojo si Mostrador escaneó más.</p>
     <div class="wrap"><table>
-      <thead><tr><th>Producto</th><th>Enviado</th><th>Vendido</th><th>Devuelto</th><th>Queda</th><th>% vendido</th><th>Estado</th></tr></thead>
+      <thead><tr><th>Producto</th><th>Enviado</th><th>Vendido (Mostrador)</th><th>Vendido (Oficina)</th><th>Devuelto</th><th>Queda</th><th>% vendido</th><th>Estado</th></tr></thead>
       <tbody id="tInv"></tbody><tfoot id="fInv"></tfoot>
     </table></div>
   </section>
@@ -176,7 +180,7 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
 async function cargar(){
   const fecha = $("fecha").value;
   $("upd").textContent = "Cargando…";
-  const { data, error } = await sb.rpc("mostrador_dia",{ p_fecha: fecha });
+  const { data, error } = await sb.rpc("oficina_inventario_dia",{ p_fecha: fecha });   // = mostrador_dia + lo escaneado en oficina
   if(error){ $("upd").textContent = "Error: "+error.message; return; }
   pintar(data, fecha);
   $("upd").textContent = "Actualizado "+new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
@@ -184,7 +188,7 @@ async function cargar(){
 
 function pintar(d, fecha){
   const P = {};   // por SKU
-  const get = sku => P[sku] ??= {sku, env:0, envPz:0, envN:0, ultEnv:null, ven:0, venReciente:0, dev:0};
+  const get = sku => P[sku] ??= {sku, env:0, envPz:0, envN:0, ultEnv:null, ven:0, venReciente:0, dev:0, ofi:0};
   const ahora = new Date();
   const cierre = fechaHoraMX(fecha, $("cierre").value || "16:00");
   const esHoy = fecha === hoyMX();
@@ -197,12 +201,14 @@ function pintar(d, fecha){
     if(new Date(v.hora) >= desdeRitmo) p.venReciente += +v.kg;
   });
   d.devueltos.forEach(x=>{ get(x.sku).dev += +x.kg; });
+  const revOfi = new Set();
+  (d.oficina || []).forEach(x=>{ get(x.sku).ofi += +x.kg; revOfi.add(x.revision); });
 
   const filas = Object.values(P).sort((a,b)=>b.env-a.env || b.ven-a.ven);
   const abierto = esHoy && ahora < cierre;
   const horasRestantes = abierto ? (cierre-ahora)/3600e3 : 0;
 
-  let T = {env:0, ven:0, dev:0, que:0, pro:0};
+  let T = {env:0, ven:0, dev:0, que:0, pro:0, ofi:0};
   const raros = [];
   filas.forEach(p=>{
     p.que = p.env - p.ven - p.dev;
@@ -212,12 +218,13 @@ function pintar(d, fecha){
     p.seAcaba = (abierto && p.ritmo>0 && p.que>AGOTADO_KG && p.que/p.ritmo < horasRestantes)
       ? new Date(ahora.getTime() + p.que/p.ritmo*3600e3) : null;
     if(p.que < -AGOTADO_KG) raros.push(p);
-    T.env+=p.env; T.ven+=p.ven; T.dev+=p.dev; T.que+=Math.max(p.que,0); T.pro+=p.regresan;
+    T.env+=p.env; T.ven+=p.ven; T.dev+=p.dev; T.ofi+=p.ofi; T.que+=Math.max(p.que,0); T.pro+=p.regresan;
   });
 
   // KPIs
   $("kEnv").textContent=f0(T.env); $("kVen").textContent=f0(T.ven);
   $("kTk").textContent=tickets.size+" tickets escaneados";
+  $("kOfi").textContent=f0(T.ofi); $("kOfiTk").textContent=revOfi.size+" tickets en oficina";
   $("kDev").textContent=f0(T.dev); $("kQue").textContent=f0(T.que); $("kPro").textContent=f0(T.pro);
 
   // Alertas
@@ -241,12 +248,16 @@ function pintar(d, fecha){
     else if(p.que <= AGOTADO_KG) est = `<span class="pill p-bad">Se terminó</span>`;
     else if(p.env>0 && p.que/p.env < BAJO_PCT) est = `<span class="pill p-warn">Poco</span>`;
     else est = `<span class="pill p-ok">Hay</span>`;
-    return `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${f1(p.env)}</td><td>${f1(p.ven)}</td><td>${f1(p.dev)}</td>
+    const dOfi = p.ofi - p.ven;
+    const celOfi = Math.abs(dOfi) <= 0.05 ? `${f1(p.ofi)}`
+      : dOfi > 0 ? `<span class="dif-w">${f1(p.ofi)}</span><span class="difn dif-w">oficina +${f1(dOfi)}</span>`
+                 : `<span class="dif-b">${f1(p.ofi)}</span><span class="difn dif-b">Mostrador +${f1(-dOfi)}</span>`;
+    return `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${f1(p.env)}</td><td>${f1(p.ven)}</td><td class="ofi">${celOfi}</td><td>${f1(p.dev)}</td>
       <td><b>${f1(p.que)}</b></td>
       <td><div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><div class="bar"><i style="width:${pct*100}%"></i></div>${Math.round(pct*100)}%</div></td>
       <td>${est}</td></tr>`;
-  }).join("") : `<tr><td colspan="7" class="vacio">Sin movimientos este día</td></tr>`;
-  $("fInv").innerHTML = `<tr><td>Total</td><td>${f1(T.env)}</td><td>${f1(T.ven)}</td><td>${f1(T.dev)}</td><td>${f1(T.que)}</td><td>${T.env?Math.round(T.ven/T.env*100):0}%</td><td></td></tr>`;
+  }).join("") : `<tr><td colspan="8" class="vacio">Sin movimientos este día</td></tr>`;
+  $("fInv").innerHTML = `<tr><td>Total</td><td>${f1(T.env)}</td><td>${f1(T.ven)}</td><td class="ofi">${f1(T.ofi)}</td><td>${f1(T.dev)}</td><td>${f1(T.que)}</td><td>${T.env?Math.round(T.ven/T.env*100):0}%</td><td></td></tr>`;
 
   // ENVIADOS
   const envF = filas.filter(p=>p.envN>0);
