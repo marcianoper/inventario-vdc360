@@ -48,6 +48,18 @@
   td.ofi{background:#f5f3ff}
   .dif-w{color:var(--warn);font-weight:700} .dif-b{color:var(--bad);font-weight:700}
   .difn{display:block;font-size:11px;font-weight:700}
+  /* Detalle por producto (seguimiento de cada ticket) */
+  tr.fil{cursor:pointer} tr.fil:hover td{background:#fafafa}
+  tr.fil td:first-child b::before{content:"▸ ";color:var(--muted)}
+  tr.fil.abierto td:first-child b::before{content:"▾ "}
+  tr.det td{background:#fcfcfd;padding:10px 12px;white-space:normal;text-align:left}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:800px){ .seg{grid-template-columns:1fr} }
+  .seg h4{margin:0 0 6px;font-size:13px}
+  .seg table{font-size:13px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg td,.seg th{padding:6px 8px}
+  .seg th{position:static}
+  .seg .vac{color:var(--muted);font-size:13px;padding:6px 0}
   .vacio{padding:24px;text-align:center;color:var(--muted)}
   .sub{font-size:12px;color:var(--muted)}
   @media (max-width:600px){ .kpi .v{font-size:22px} th,td{padding:8px} }
@@ -85,7 +97,7 @@
   <!-- INVENTARIO -->
   <section class="panel on" id="p-inv">
     <h2>Lo que le queda a Mostrador</h2>
-    <p class="nota">Queda = Enviado − Vendido (Mostrador) − Devuelto. Vendido (Oficina) = tickets que escaneó oficina, para comparar: en naranja si oficina escaneó más, en rojo si Mostrador escaneó más.</p>
+    <p class="nota">Queda = Enviado − Vendido (Mostrador) − Devuelto. Vendido (Oficina) = tickets que escaneó oficina, para comparar: en naranja si oficina escaneó más, en rojo si Mostrador escaneó más. <b>Toca un producto</b> para ver cada ticket: hora, cliente y si también lo escaneó el otro.</p>
     <div class="wrap"><table>
       <thead><tr><th>Producto</th><th>Enviado</th><th>Vendido (Mostrador)</th><th>Vendido (Oficina)</th><th>Devuelto</th><th>Queda</th><th>% vendido</th><th>Estado</th></tr></thead>
       <tbody id="tInv"></tbody><tfoot id="fInv"></tfoot>
@@ -180,10 +192,63 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
 async function cargar(){
   const fecha = $("fecha").value;
   $("upd").textContent = "Cargando…";
-  const { data, error } = await sb.rpc("oficina_inventario_dia",{ p_fecha: fecha });   // = mostrador_dia + lo escaneado en oficina
-  if(error){ $("upd").textContent = "Error: "+error.message; return; }
-  pintar(data, fecha);
+  const [inv, tk, rv] = await Promise.all([
+    sb.rpc("oficina_inventario_dia",{ p_fecha: fecha }),   // = mostrador_dia + lo escaneado en oficina
+    sb.rpc("tickets_escaneados_dia",{ p_fecha: fecha }),   // cliente y productos de cada ticket de Mostrador
+    sb.rpc("revision_oficina_dia",{ p_fecha: fecha }),     // cada escaneo de oficina
+  ]);
+  if(inv.error){ $("upd").textContent = "Error: "+inv.error.message; return; }
+  prepararSeguimiento(tk.data || [], rv.data || []);
+  pintar(inv.data, fecha);
   $("upd").textContent = "Actualizado "+new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+}
+
+// ===== Seguimiento: quién escaneó cada kilo =====
+// Une cada ticket de Mostrador con su escaneo de oficina (mismos productos y kilos),
+// para decir en el detalle si el ticket aparece en los dos lados o solo en uno.
+let SEG = { venta:new Map(), rev:new Map() };
+const abiertos = new Set();
+const firmaItems = items => (items||[]).map(i => (i.sku||i.p) + "=" + Number(i.kg).toFixed(2)).sort().join("|");
+function prepararSeguimiento(tickets, revs){
+  const venta = new Map(), rev = new Map();
+  tickets.filter(t => t.tipo === "mostrador").forEach(t => venta.set(t.id, { hora:t.hora, cliente:t.cliente, items:t.items, rev:null }));
+  revs.forEach(r => rev.set(r.id, { hora:r.hora, items:r.items, canal:r.revisado_por, venta:null }));
+  // 1) ya unidas en Supabase
+  revs.forEach(r => { if(r.venta_id && venta.has(r.venta_id) && !venta.get(r.venta_id).rev){ venta.get(r.venta_id).rev = r.id; rev.get(r.id).venta = r.venta_id; } });
+  // 2) oficina escaneó primero: se unen por mismos productos y kilos
+  for(const [rid, r] of rev){
+    if(r.venta) continue;
+    const f = firmaItems(r.items);
+    for(const [vid, v] of venta){ if(!v.rev && firmaItems(v.items) === f){ v.rev = rid; r.venta = vid; break; } }
+  }
+  SEG = { venta, rev };
+}
+const hhmm = iso => new Date(iso).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+function detalleProducto(sku, d){
+  // Mostrador: tickets que llevan este producto
+  const mos = new Map();
+  d.ventas.filter(v => v.sku === sku).forEach(v => { const x = mos.get(v.venta) || { id:v.venta, hora:v.hora, kg:0 }; x.kg += +v.kg; mos.set(v.venta, x); });
+  const ofi = new Map();
+  (d.oficina||[]).filter(v => v.sku === sku).forEach(v => { const x = ofi.get(v.revision) || { id:v.revision, hora:v.hora, kg:0 }; x.kg += +v.kg; ofi.set(v.revision, x); });
+
+  const filasMos = [...mos.values()].sort((a,b)=>a.hora<b.hora?-1:1).map(x => {
+    const v = SEG.venta.get(x.id);
+    const r = v && v.rev != null ? SEG.rev.get(v.rev) : null;
+    const est = r ? `<span class="pill p-ok">✔ oficina ${r.hora.slice(0,5)}</span>` : `<span class="pill p-bad">No pasó por oficina</span>`;
+    return `<tr><td>${hhmm(x.hora)}</td><td style="text-align:left">${v ? v.cliente : "—"}</td><td><b>${f1(x.kg)}</b></td><td>${est}</td></tr>`;
+  });
+  const filasOfi = [...ofi.values()].sort((a,b)=>a.hora<b.hora?-1:1).map(x => {
+    const r = SEG.rev.get(x.id);
+    const v = r && r.venta ? SEG.venta.get(r.venta) : null;
+    const canal = r && r.canal === "pedidos" ? "Pedidos" : "Mostrador";
+    const est = v ? `<span class="pill p-ok">✔ ${v.cliente} ${v.hora.slice(0,5)}</span>` : `<span class="pill p-warn">Mostrador no lo escaneó</span>`;
+    return `<tr><td>${hhmm(x.hora)}</td><td style="text-align:left">${canal}</td><td><b>${f1(x.kg)}</b></td><td>${est}</td></tr>`;
+  });
+  const sumM = [...mos.values()].reduce((s,x)=>s+x.kg,0), sumO = [...ofi.values()].reduce((s,x)=>s+x.kg,0);
+  const tabla = (titulo, cab, filas, total) => `<div><h4>${titulo} · ${filas.length} ticket${filas.length===1?"":"s"} · ${f1(total)} kg</h4>` +
+    (filas.length ? `<table><thead><tr><th>Hora</th><th style="text-align:left">${cab}</th><th>Kg</th><th>Seguimiento</th></tr></thead><tbody>${filas.join("")}</tbody></table>`
+                  : `<div class="vac">Ningún ticket.</div>`) + `</div>`;
+  return `<div class="seg">${tabla("🏪 Escaneado en Mostrador", "Cliente", filasMos, sumM)}${tabla("🧾 Escaneado en oficina", "Botón", filasOfi, sumO)}</div>`;
 }
 
 function pintar(d, fecha){
@@ -252,10 +317,12 @@ function pintar(d, fecha){
     const celOfi = Math.abs(dOfi) <= 0.05 ? `${f1(p.ofi)}`
       : dOfi > 0 ? `<span class="dif-w">${f1(p.ofi)}</span><span class="difn dif-w">oficina +${f1(dOfi)}</span>`
                  : `<span class="dif-b">${f1(p.ofi)}</span><span class="difn dif-b">Mostrador +${f1(-dOfi)}</span>`;
-    return `<tr><td><b>${nombreBonito(p.sku)}</b></td><td>${f1(p.env)}</td><td>${f1(p.ven)}</td><td class="ofi">${celOfi}</td><td>${f1(p.dev)}</td>
+    const ab = abiertos.has(p.sku);
+    return `<tr class="fil${ab?" abierto":""}" data-sku="${p.sku}"><td><b>${nombreBonito(p.sku)}</b></td><td>${f1(p.env)}</td><td>${f1(p.ven)}</td><td class="ofi">${celOfi}</td><td>${f1(p.dev)}</td>
       <td><b>${f1(p.que)}</b></td>
       <td><div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><div class="bar"><i style="width:${pct*100}%"></i></div>${Math.round(pct*100)}%</div></td>
-      <td>${est}</td></tr>`;
+      <td>${est}</td></tr>
+      <tr class="det" data-det="${p.sku}" style="display:${ab?"table-row":"none"}"><td colspan="8">${detalleProducto(p.sku, d)}</td></tr>`;
   }).join("") : `<tr><td colspan="8" class="vacio">Sin movimientos este día</td></tr>`;
   $("fInv").innerHTML = `<tr><td>Total</td><td>${f1(T.env)}</td><td>${f1(T.ven)}</td><td class="ofi">${f1(T.ofi)}</td><td>${f1(T.dev)}</td><td>${f1(T.que)}</td><td>${T.env?Math.round(T.ven/T.env*100):0}%</td><td></td></tr>`;
 
@@ -279,6 +346,17 @@ function pintar(d, fecha){
   ).join("") : `<tr><td colspan="7" class="vacio">Sin envíos este día</td></tr>`;
   $("fDev").innerHTML = `<tr><td>Total</td><td>${f1(T.que)}</td><td></td><td></td><td>${f1(T.pro)}</td><td>${f1(T.dev)}</td><td></td></tr>`;
 }
+
+$("tInv").addEventListener("click", e => {
+  const tr = e.target.closest("tr.fil");
+  if(!tr) return;
+  const sku = tr.dataset.sku;
+  const det = document.querySelector(`tr.det[data-det="${sku}"]`);
+  const abrir = !abiertos.has(sku);
+  abrir ? abiertos.add(sku) : abiertos.delete(sku);
+  tr.classList.toggle("abierto", abrir);
+  if(det) det.style.display = abrir ? "table-row" : "none";
+});
 
 cargar();
 setInterval(()=>{
