@@ -329,8 +329,15 @@
   //   ^ en lugar de {     ` en lugar de }     ~ en lugar de ]     y el [ del inicio no llega.
   // Ej.: ^"c":"3.800","p":"LENGUA"`,^"c":"26.200","p":"HIGADO"`~
   // Aquí se convierte de vuelta a [{"c":"3.800","p":"LENGUA"},{"c":"26.200","p":"HIGADO"}]
+  // ===== Teclado con Y y Z cambiadas =====
+  // Si la computadora tiene activo otro teclado (alemán / inglés internacional), la pistola manda
+  // Y en lugar de Z: "CABEYA", "CAJA AYUL", "PANYA", "CORAYON". Ningún producto del catálogo lleva Y,
+  // así que en tickets con productos toda Y se regresa a Z. (Los QR cortos TB: no se tocan.)
+  function arreglarYZ(t){ return String(t || "").replace(/Y/g, "Z").replace(/y/g, "z"); }
+
   function normalizarPistola(t){
     let s = String(t || "").trim();
+    if(!idTicketBodega(s)) s = arreglarYZ(s);
     if(/[\^`~]/.test(s) && !/[{}]/.test(s)){
       s = s.replace(/\^/g, "{").replace(/`/g, "}").replace(/~/g, "]");
       if(s.startsWith("{") && s.endsWith("]")) s = "[" + s;
@@ -669,8 +676,10 @@
 
   // ===== Revisar un ticket =====
   async function handleDecoded(decodedText){
-    const texto = normalizarPistola(String(decodedText || "").trim());
+    const original = String(decodedText || "").trim();
+    const texto = normalizarPistola(original);
     if(!texto) return;
+    const tecladoCambiado = !idTicketBodega(original) && /[Yy]/.test(original);
     if(!modo){ beep("warn"); mostrarResElige(); return; }
     if(busy){
       const limite = Date.now() + 15000;
@@ -686,6 +695,8 @@
       if(tbId){
         // QR corto: los productos vienen de Supabase, no del texto escaneado
         raw = await traerTicketBodega(tbId);
+        // con el teclado cambiado el ID puede llegar con Y/Z intercambiadas
+        if(!raw && /[YZ]/.test(tbId)) raw = await traerTicketBodega(tbId.replace(/[YZ]/g, ch => ch === "Y" ? "Z" : "Y"));
         if(!raw){
           beep("warn");
           mostrarRes("warn", "🔍", "Ticket no encontrado", `No existe TB:${tbId} en la base.\nPuede que la báscula todavía no lo haya mandado (sin internet). Espera un momento y vuelve a escanear.\nNo se revisó nada.`);
@@ -721,7 +732,8 @@
         if(error) throw new Error(error.message);
       }
 
-      const detalle = `${resumenItems(items)}\nTotal: ${kgFmt(total)} kg`;
+      const detalle = `${resumenItems(items)}\nTotal: ${kgFmt(total)} kg` +
+        (tecladoCambiado ? "\n\n⌨️ Ojo: el teclado de esta computadora está cambiado (llegó Y en lugar de Z). Ya se corrigió solo, pero revisa el idioma del teclado." : "");
       if(data?.code === "OK"){
         const canalMos = canalDeCliente(data.cliente);
         if(canalMos !== modoTicket){
