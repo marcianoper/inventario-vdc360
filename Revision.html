@@ -187,13 +187,20 @@
 
   const BOX_FULL_KG = 27.22;
 
-  // ===== Tickets de la báscula de bodega con QR corto (TB:XXXXXXX) =====
-  // El QR ya no trae los productos: solo un ID. Los productos se piden a Supabase (tabla tickets_bodega).
-  // Acepta lo que manda la pistola con teclado cambiado o Bloq Mayús: "TB:ABC", "tbÑabc", "TB;ABC".
+  // ===== Tickets de la báscula de bodega (el sistema de báscula los manda directo a Supabase) =====
+  // El ticket trae un CÓDIGO DE BARRAS con su folio (ej. 54005). Los productos, kilos e importe
+  // se piden a Supabase (tabla tickets_bodega) con ese folio.
+  // También acepta el QR corto "TB:54005" (y "tbÑ54005" / "TB;54005" si la pistola tiene el teclado cambiado).
+  // Los QR viejos (que empiezan con [ o {) NO entran aquí: siguen leyéndose como siempre.
   function idTicketBodega(texto){
-    const m = String(texto || "").trim().match(/^T\s*B\s*[:Ññ;]\s*([A-Za-z0-9-]{3,32})$/i);
-    return m ? m[1].toUpperCase() : "";
+    const t = String(texto || "").trim();
+    let m = t.match(/^T\s*B\s*[:Ññ;]\s*([A-Za-z0-9-]{3,32})$/i);   // QR corto TB:XXXX
+    if(m) return m[1].toUpperCase();
+    m = t.match(/^[A-Za-z0-9-]{3,32}$/);                              // código de barras: solo el folio
+    return m ? t.toUpperCase() : "";
   }
+  // La pistola manda el folio corto muy rápido; se espera un poco por si todavía vienen más dígitos
+  function esQrCortoCompleto(texto){ return /^T\s*B\s*[:Ññ;]\s*[A-Za-z0-9-]{3,32}$/i.test(String(texto || "").trim()); }
   // Regresa el ticket en el mismo formato que un QR viejo ({qr_id, items:[{producto, cantidad}]})
   // para que pase por la misma lógica de siempre. Regresa null si el ID no existe.
   async function traerTicketBodega(id){
@@ -202,8 +209,18 @@
     if(!data) return null;
     return {
       qr_id: "TB_" + data.id,   // huella del ticket: QRID_TB_<ID> (igual en Mostrador y en oficina)
-      items: (data.items || []).map(i => ({ producto: i.producto, cantidad: String(i.kg ?? i.piezas ?? "") }))
+      items: (data.items || []).map(i => ({ producto: i.producto, cantidad: String(i.kg ?? i.piezas ?? "") })),
+      _fecha: data.fecha || ""  // fecha y hora en que la báscula hizo el ticket
     };
+  }
+
+  // ===== Candado: solo se aceptan tickets de HOY =====
+  // Cada folio trae la fecha y hora en que se hizo. Si es de otro día, se avisa y NO se escanea.
+  const diaMX = iso => new Intl.DateTimeFormat("en-CA", { timeZone:"America/Mexico_City" }).format(new Date(iso));
+  const fechaHoraMX = iso => new Date(iso).toLocaleString("es-MX", { timeZone:"America/Mexico_City", day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" });
+  function ticketDeOtroDia(ticket, hoy){
+    if(!ticket?._fecha || isNaN(new Date(ticket._fecha))) return "";
+    return diaMX(ticket._fecha) !== hoy ? fechaHoraMX(ticket._fecha) : "";
   }
 
   const $ = (id)=>document.getElementById(id);
@@ -329,15 +346,8 @@
   //   ^ en lugar de {     ` en lugar de }     ~ en lugar de ]     y el [ del inicio no llega.
   // Ej.: ^"c":"3.800","p":"LENGUA"`,^"c":"26.200","p":"HIGADO"`~
   // Aquí se convierte de vuelta a [{"c":"3.800","p":"LENGUA"},{"c":"26.200","p":"HIGADO"}]
-  // ===== Teclado con Y y Z cambiadas =====
-  // Si la computadora tiene activo otro teclado (alemán / inglés internacional), la pistola manda
-  // Y en lugar de Z: "CABEYA", "CAJA AYUL", "PANYA", "CORAYON". Ningún producto del catálogo lleva Y,
-  // así que en tickets con productos toda Y se regresa a Z. (Los QR cortos TB: no se tocan.)
-  function arreglarYZ(t){ return String(t || "").replace(/Y/g, "Z").replace(/y/g, "z"); }
-
   function normalizarPistola(t){
     let s = String(t || "").trim();
-    if(!idTicketBodega(s)) s = arreglarYZ(s);
     if(/[\^`~]/.test(s) && !/[{}]/.test(s)){
       s = s.replace(/\^/g, "{").replace(/`/g, "}").replace(/~/g, "]");
       if(s.startsWith("{") && s.endsWith("]")) s = "[" + s;
@@ -676,10 +686,8 @@
 
   // ===== Revisar un ticket =====
   async function handleDecoded(decodedText){
-    const original = String(decodedText || "").trim();
-    const texto = normalizarPistola(original);
+    const texto = normalizarPistola(String(decodedText || "").trim());
     if(!texto) return;
-    const tecladoCambiado = !idTicketBodega(original) && /[Yy]/.test(original);
     if(!modo){ beep("warn"); mostrarResElige(); return; }
     if(busy){
       const limite = Date.now() + 15000;
@@ -693,13 +701,18 @@
       let raw, problema = "";
       const tbId = idTicketBodega(texto);
       if(tbId){
-        // QR corto: los productos vienen de Supabase, no del texto escaneado
+        // Folio de báscula (código de barras o TB:): los productos vienen de Supabase, no del texto escaneado
         raw = await traerTicketBodega(tbId);
-        // con el teclado cambiado el ID puede llegar con Y/Z intercambiadas
-        if(!raw && /[YZ]/.test(tbId)) raw = await traerTicketBodega(tbId.replace(/[YZ]/g, ch => ch === "Y" ? "Z" : "Y"));
         if(!raw){
           beep("warn");
-          mostrarRes("warn", "🔍", "Ticket no encontrado", `No existe TB:${tbId} en la base.\nPuede que la báscula todavía no lo haya mandado (sin internet). Espera un momento y vuelve a escanear.\nNo se revisó nada.`);
+          mostrarRes("warn", "🔍", "Ticket no encontrado", `No existe el folio ${tbId} en la base.\nPuede que la báscula todavía no lo haya mandado (sin internet). Espera un momento y vuelve a escanear.\nNo se revisó nada.`);
+          return;
+        }
+        const otroDia = ticketDeOtroDia(raw, fecha);
+        if(otroDia){
+          beep("bad");
+          mostrarRes("bad", "⛔", "Ticket de otro día — NO se revisó", `El folio ${tbId} es del ${otroDia}.\nSolo se pueden escanear tickets de hoy.`);
+          window.alert(`⛔ TICKET DE OTRO DÍA\n\nEl folio ${tbId} es del ${otroDia}.\nSolo se pueden escanear tickets de hoy. No se revisó.`);
           return;
         }
       }else{
@@ -732,8 +745,7 @@
         if(error) throw new Error(error.message);
       }
 
-      const detalle = `${resumenItems(items)}\nTotal: ${kgFmt(total)} kg` +
-        (tecladoCambiado ? "\n\n⌨️ Ojo: el teclado de esta computadora está cambiado (llegó Y en lugar de Z). Ya se corrigió solo, pero revisa el idioma del teclado." : "");
+      const detalle = `${resumenItems(items)}\nTotal: ${kgFmt(total)} kg`;
       if(data?.code === "OK"){
         const canalMos = canalDeCliente(data.cliente);
         if(canalMos !== modoTicket){
@@ -947,7 +959,7 @@
   // ===== Pistola =====
   let gunTimer = null, lastGunValue = "";
   const GUN_IDLE_MS = 400, GUN_IDLE_INCOMPLETO_MS = 1500;
-  function pareceCompleto(t){ return /[\]}+*~`]\s*$/.test(String(t||"").trim()) || !!idTicketBodega(t); }
+  function pareceCompleto(t){ return /[\]}+*~`]\s*$/.test(String(t||"").trim()) || esQrCortoCompleto(t); }
   async function processGunText(text){
     const t = String(text || "").trim();
     if(!t) return;
