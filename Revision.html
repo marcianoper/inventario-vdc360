@@ -192,12 +192,14 @@
   // se piden a Supabase (tabla tickets_bodega) con ese folio.
   // También acepta el QR corto "TB:54005" (y "tbÑ54005" / "TB;54005" si la pistola tiene el teclado cambiado).
   // Los QR viejos (que empiezan con [ o {) NO entran aquí: siguen leyéndose como siempre.
+  // La pistola a veces repite la letra del folio: lee "BB54380" cuando el folio es "B54380".
+  const quitarLetraRepetida = id => id.replace(/^([A-Z])\1+(?=\d)/, "$1");
   function idTicketBodega(texto){
     const t = String(texto || "").trim();
     let m = t.match(/^T\s*B\s*[:Ññ;]\s*([A-Za-z0-9-]{3,32})$/i);   // QR corto TB:XXXX
-    if(m) return m[1].toUpperCase();
+    if(m) return quitarLetraRepetida(m[1].toUpperCase());
     m = t.match(/^[A-Za-z0-9-]{3,32}$/);                              // código de barras: solo el folio
-    return m ? t.toUpperCase() : "";
+    return m ? quitarLetraRepetida(t.toUpperCase()) : "";
   }
   // La pistola manda el folio corto muy rápido; se espera un poco por si todavía vienen más dígitos
   function esQrCortoCompleto(texto){ return /^T\s*B\s*[:Ññ;]\s*[A-Za-z0-9-]{3,32}$/i.test(String(texto || "").trim()); }
